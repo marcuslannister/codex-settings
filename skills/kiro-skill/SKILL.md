@@ -1,6 +1,6 @@
 ---
 name: kiro-skill
-description: Interactive feature development workflow from idea to implementation. Creates requirements (EARS format), design documents, and implementation task lists. Use when creating feature specs, requirements documents, design documents, or implementation plans. Triggered by "kiro" or references to .kiro/specs/ directory.
+description: 'Interactive feature development workflow from idea to implementation. Creates requirements (EARS format), design documents, and implementation task lists. Use when creating feature specs, requirements documents, design documents, or implementation plans. Triggered by "kiro" or references to .kiro/specs/ directory.'
 ---
 
 # Kiro: Spec-Driven Development Workflow

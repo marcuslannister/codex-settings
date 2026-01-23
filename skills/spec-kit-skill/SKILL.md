@@ -1,6 +1,6 @@
 ---
 name: spec-kit-skill
-description: GitHub Spec-Kit integration for constitution-based spec-driven development. 7-phase workflow (constitution, specify, clarify, plan, tasks, analyze, implement). Use when working with spec-kit CLI, .specify/ directories, or creating specifications with constitution-driven development. Triggered by "spec-kit", "speckit", "constitution", "specify", references to .specify/ directory, or spec-kit commands.
+description: 'GitHub Spec-Kit integration for constitution-based spec-driven development. 7-phase workflow (constitution, specify, clarify, plan, tasks, analyze, implement). Use when working with spec-kit CLI, .specify/ directories, or creating specifications with constitution-driven development. Triggered by "spec-kit", "speckit", "constitution", "specify", references to .specify/ directory, or spec-kit commands.'
 ---
 
 # Spec-Kit: Constitution-Based Spec-Driven Development

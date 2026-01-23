@@ -1,6 +1,6 @@
 ---
 name: claude-skill
-description: Use when user asks to leverage claude or claude code to do something (e.g. implement a feature design or review codes, etc). Provides non-interactive automation mode for hands-off task execution without approval prompts.
+description: 'Use when user asks to leverage claude or claude code to do something (e.g. implement a feature design or review codes, etc). Provides non-interactive automation mode for hands-off task execution without approval prompts.'
 ---
 
 # Claude Code Headless Mode

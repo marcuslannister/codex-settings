@@ -1,6 +1,6 @@
 ---
 name: nanobanana-skill
-description: Generate or edit images using Google Gemini API via nanobanana. Use when the user asks to create, generate, edit images with nanobanana, or mentions image generation/editing tasks.
+description: 'Generate or edit images using Google Gemini API via nanobanana. Use when the user asks to create, generate, edit images with nanobanana, or mentions image generation/editing tasks.'
 ---
 
 # Nanobanana Image Generation Skill

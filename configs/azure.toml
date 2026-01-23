@@ -17,7 +17,6 @@ name = "Azure"
 base_url = "https://[YOUR-INSTANCE-NAME].openai.azure.com/openai/v1"
 http_headers = { "api-key"= "[YOUR-API-KEY]"}
 wire_api = "responses"
-query_params = { api-version = "preview"}
 
 # MCP Tools
 [mcp_servers.context7]

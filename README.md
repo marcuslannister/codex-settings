@@ -29,6 +29,21 @@ git clone https://github.com/feiskyer/codex-settings.git ~/.codex
 ln -s /path/to/codex-settings ~/.codex
 ```
 
+### Using npx skills
+
+`npx skills` could be used to install skills only for your AI coding tools.
+
+```sh
+# List skills
+npx -y skills add -l feiskyer/codex-settings
+
+# Install all skills
+npx -y skills add --all feiskyer/codex-settings
+
+# Manually select a list of skills to install
+npx -y skills add feiskyer/codex-settings
+```
+
 ### Basic Configuration
 
 The default `config.toml` uses LiteLLM as a gateway. To use it:
@@ -207,6 +222,44 @@ Execute complex, long-running tasks across multiple sessions using a dual-agent 
 # List all tasks
 ~/.codex/skills/autonomous-skill/scripts/run-session.sh --list
 ```
+
+</details>
+
+<details>
+<summary>deep-research - Multi-agent deep research orchestration</summary>
+
+#### [deep-research](skills/deep-research)
+
+Multi-instance (multi-agent) orchestration workflow for deep research tasks. Breaks down research objectives into parallelizable sub-goals, runs child processes via `codex exec`, and aggregates results into polished reports.
+
+**Key Features:**
+
+- Parallel sub-task execution with `codex exec` in sandboxed environments
+- Automatic aggregation and chapter-by-chapter refinement
+- Structured output with deliverable reports (not chat messages)
+- Progress tracking with detailed logs per sub-task
+- Tool priority: skills → MCP (`firecrawl` → `tavily`) → direct fetch
+
+**Use Cases:**
+
+- Systematic web/document research
+- Competitor/industry analysis
+- Batch link/dataset retrieval
+- Long-form writing with evidence integration
+
+**Workflow:**
+
+1. Pre-execution planning & reconnaissance
+2. Sub-goal identification and task decomposition
+3. Generate dispatch scripts with parallel execution
+4. Design child process prompts
+5. Parallel execution with monitoring
+6. Programmatic aggregation into base draft
+7. Interpret results and design structure
+8. Chapter-by-chapter refinement
+9. Final delivery as standalone file
+
+**Output:** All artifacts saved to `.research/<name>/` directory including logs, raw data, and final polished report.
 
 </details>
 

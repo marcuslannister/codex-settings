@@ -28,3 +28,10 @@ __pycache__/
 *$py.class
 .DS_Store
 
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Temp files
+tmp
+.research

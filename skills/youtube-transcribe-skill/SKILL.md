@@ -1,6 +1,6 @@
 ---
 name: youtube-transcribe-skill
-description: Extract subtitles/transcripts from a YouTube video URL and save as a local file. Use when you need to extract subtitles from a YouTube video.
+description: 'Extract subtitles/transcripts from a YouTube video URL and save as a local file. Use when you need to extract subtitles from a YouTube video.'
 ---
 
 # YouTube Transcript Extraction
