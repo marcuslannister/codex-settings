@@ -2,8 +2,6 @@
 # This configuration uses OpenRouter, remember to replace your own API key.
 model = "gpt-5"
 model_provider = "openrouter"
-model_reasoning_summary = "detailed"
-show_raw_agent_reasoning = true
 model_verbosity = "medium"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
@@ -16,7 +14,7 @@ skills = true
 name     = "OpenRouter"
 base_url = "https://openrouter.ai/api/v1"
 http_headers = { "Authorization"= "Bearer [YOUR-API-KEY]"}
-wire_api = "chat"
+wire_api = "responses"
 
 # MCP Tools
 [mcp_servers.context7]

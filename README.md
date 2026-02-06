@@ -8,7 +8,7 @@ A curated collection of configurations, skills and custom prompts for [OpenAI Co
 
 This repository provides:
 
-- **Flexible Configuration**: Support for multiple model providers (LiteLLM/Copilot proxy, ChatGPT subscription, Azure OpenAI, OpenRouter, ModelScope, Kimi)
+- **Flexible Configuration**: Support for multiple model providers (LiteLLM/Copilot proxy, ChatGPT subscription, Azure OpenAI, OpenRouter)
 - **Custom Prompts**: Reusable prompt templates for common development tasks
 - **Skills (Experimental)**: Discoverable instruction bundles for specialized tasks (image generation, YouTube transcription, spec-driven workflows)
 - **Best Practices**: Pre-configured settings optimized for development workflows
@@ -118,8 +118,6 @@ Located in `configs/` directory:
 - [Azure OpenAI](configs/azure.toml): Use Azure OpenAI service provider
 - [Github Copilot](configs/github-copilot.toml): Use Github Copilot via LiteLLM proxy
 - [OpenRouter](configs/openrouter.toml): Use OpenRouter provider
-- [Model Scope](configs/modelscope.toml): Use ModelScope provider
-- [Kimi](configs/kimi.toml): Use Moonshot Kimi provider
 
 To use an alternative config:
 
@@ -413,14 +411,14 @@ model_provider = "github"
 [model_providers.github]
 name     = "OpenAI"
 base_url = "http://localhost:4000"
-http_headers = { "Authorization"= "Bearer sk-dummy"}
-wire_api = "chat"
+http_headers = { "Authorization"= "Bearer sk-dummy" }
+wire_api = "responses"
 
 [model_providers.openrouter]
 name     = "OpenRouter"
 base_url = "https://openrouter.ai/api/v1"
 http_headers = { "Authorization"= "Bearer [YOUR-API-KEY]"}
-wire_api = "chat"
+wire_api = "responses"
 ```
 
 Use with: `codex --profile openrouter`
