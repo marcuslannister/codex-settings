@@ -5,9 +5,17 @@ model_verbosity = "medium"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 model_reasoning_effort = "high"
+web_search = "live"
 
 [features]
 skills = true
+unified_exec = true
+shell_snapshot = true
+collab = true
+steer = true
+collaboration_modes = true
+apps = true
+personality = true
 
 # MCP Tools
 [mcp_servers.context7]

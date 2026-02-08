@@ -16,7 +16,6 @@ shell_snapshot = true
 collab = true
 steer = true
 collaboration_modes = true
-apps = true
 personality = true
 
 # Model providers (LiteLLM as Github Copilot proxy)

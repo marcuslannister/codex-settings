@@ -1,7 +1,7 @@
 # Codex CLI Configuration
 # This configuration uses LiteLLM as the model provider gateway
 # See: https://docs.litellm.ai/docs/simple_proxy
-model = "gpt-5"
+model = "gpt-5.2-codex"
 model_provider = "github"
 model_verbosity = "medium"
 approval_policy = "on-failure"
@@ -17,7 +17,6 @@ shell_snapshot = true
 collab = true
 steer = true
 collaboration_modes = true
-apps = true
 personality = true
 
 # Model providers (LiteLLM as Github Copilot proxy)
