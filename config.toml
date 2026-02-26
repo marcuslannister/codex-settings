@@ -33,4 +33,4 @@ wire_api = "responses"
 
 [mcp_servers.chrome]
 command = "npx"
-args = ["chrome-devtools-mcp@latest"]
+args = ["chrome-devtools-mcp@latest", "--no-usage-statistics", "--autoConnect"]
