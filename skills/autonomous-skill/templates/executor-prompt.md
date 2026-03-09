@@ -256,8 +256,8 @@ If a task turns out to be much larger than expected:
 If a task can't be completed due to dependencies:
 
 1. Note the blocker in `{TASK_DIR}/progress.md`
-2. Add "(blocked: reason)" to the task in `{TASK_DIR}/task_list.md`
-3. Move to the next unblocked task
+2. Leave the task unchecked in `{TASK_DIR}/task_list.md` so the original wording stays intact
+3. Only move to a later task if it is genuinely independent and does not violate the task order
 
 ### Found a bug in previous work
 

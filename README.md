@@ -198,7 +198,7 @@ Non-interactive automation mode for hands-off task execution using Claude Code. 
 
 Execute complex, long-running tasks across multiple sessions using a dual-agent pattern (Initializer + Executor) with automatic session continuation.
 
-> Warning: workflows may pause when Codex requests permissions. Treat this as experimental; expect to babysit early runs and keep iterating on approvals/sandbox settings.
+The runner keeps model selection with your active Codex config/profile and pins unattended execution through config overrides rather than hardcoding a model or relying on `--full-auto`.
 
 **Key Features:**
 

@@ -1,14 +1,15 @@
 # Codex CLI Configuration
 # This configuration uses LiteLLM as the model provider gateway
 # See: https://docs.litellm.ai/docs/simple_proxy
-model = "gpt-5.2-codex"
+model = "gpt-5.4"
 model_provider = "github"
 model_verbosity = "medium"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 model_reasoning_effort = "high"
 suppress_unstable_features_warning = true
-web_search = "disabled"
+web_search = "disabled" # live
+personality = "pragmatic"
 
 [features]
 skills = true
@@ -18,6 +19,7 @@ multi_agent = true
 steer = true
 collaboration_modes = true
 personality = true
+voice_transcription = true
 
 # Model providers (LiteLLM as Github Copilot proxy)
 [model_providers.github]
@@ -26,11 +28,17 @@ base_url = "http://localhost:4000"
 http_headers = { "Authorization"= "Bearer sk-dummy" }
 wire_api = "responses"
 
+[sandbox_workspace_write]
+network_access = true
+
 # MCP Tools
-# [mcp_servers.claude] # Migrated to skills
-# command = "claude"
-# args = ["mcp", "serve"]
+[mcp_servers.claude]
+command = "claude"
+args = ["mcp", "serve"]
 
 [mcp_servers.chrome]
 command = "npx"
 args = ["chrome-devtools-mcp@latest", "--no-usage-statistics", "--autoConnect"]
+
+[tui]
+status_line = ["model-with-reasoning", "context-remaining", "current-dir", "model-name", "git-branch", "context-used", "context-window-size", "used-tokens", "total-output-tokens", "five-hour-limit", "weekly-limit"]

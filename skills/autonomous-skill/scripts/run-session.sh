@@ -15,6 +15,7 @@ set -euo pipefail
 # Configuration
 AUTO_CONTINUE_DELAY=3
 CURRENT_TASK_NAME=""
+CODEX_ARGS=()
 
 # Use CODEX_PLUGIN_ROOT or fallback to script directory
 if [ -n "${CODEX_PLUGIN_ROOT:-}" ]; then
@@ -86,7 +87,7 @@ show_help() {
     echo "  --max-sessions N         Limit to N sessions"
     echo "  --list                   List all existing tasks"
     echo "  --resume-last            Resume the most recent Codex session"
-    echo "  --network                Enable network access (uses danger-full-access sandbox)"
+    echo "  --network                Enable danger-full-access sandbox for tasks that need broader shell access"
     echo ""
     echo "Examples:"
     echo "  $0 \"Build a REST API for todo app\""
@@ -96,6 +97,7 @@ show_help() {
     echo ""
     echo "Task Directory: $AUTONOMOUS_DIR/<task-name>/"
     echo "Skill Directory: $SKILL_DIR"
+    echo "Model Selection: Uses the active Codex config/profile model (no --model override)"
     echo ""
 }
 
@@ -142,6 +144,24 @@ check_dependencies() {
         echo "Please install Codex CLI: https://github.com/openai/codex"
         exit 1
     fi
+}
+
+# Build Codex CLI args for unattended execution.
+# Intentionally do not pass --model so Codex uses the active config/profile model.
+build_codex_args() {
+    local enable_network="$1"
+    local sandbox_mode="workspace-write"
+
+    if [ "$enable_network" = true ]; then
+        sandbox_mode="danger-full-access"
+    fi
+
+    CODEX_ARGS=(
+        -c 'approval_policy="never"'
+        -c "sandbox_mode=\"$sandbox_mode\""
+        --skip-git-repo-check
+        --json
+    )
 }
 
 # List all tasks
@@ -261,17 +281,17 @@ is_complete() {
     return 1  # not complete
 }
 
-# Extract session ID from JSON Lines output
+# Extract session ID from mixed Codex output (JSON events plus possible warnings)
 extract_session_id() {
     local log_file="$1"
     # Prefer thread_id from thread.started; fall back to any thread_id or session_id
     local id=""
-    id=$(grep -m 1 '"type":"thread.started"' "$log_file" 2>/dev/null | sed -n 's/.*"thread_id":"\([^"]*\)".*/\1/p')
+    id=$(grep '"type":"thread.started"' "$log_file" 2>/dev/null | tail -n 1 | sed -n 's/.*"thread_id":"\([^"]*\)".*/\1/p')
     if [ -z "$id" ]; then
-        id=$(grep -m 1 '"thread_id"' "$log_file" 2>/dev/null | sed -n 's/.*"thread_id":"\([^"]*\)".*/\1/p')
+        id=$(grep '"thread_id"' "$log_file" 2>/dev/null | tail -n 1 | sed -n 's/.*"thread_id":"\([^"]*\)".*/\1/p')
     fi
     if [ -z "$id" ]; then
-        id=$(grep -m 1 '"session_id"' "$log_file" 2>/dev/null | sed -n 's/.*"session_id":"\([^"]*\)".*/\1/p')
+        id=$(grep '"session_id"' "$log_file" 2>/dev/null | tail -n 1 | sed -n 's/.*"session_id":"\([^"]*\)".*/\1/p')
     fi
     echo "$id"
 }
@@ -295,16 +315,10 @@ run_initializer() {
     # Read initializer prompt template and substitute {TASK_DIR} placeholder
     local init_prompt=$(cat "$SKILL_DIR/templates/initializer-prompt.md" | sed "s|{TASK_DIR}|$task_dir|g")
 
-    # Build codex command
-    # --full-auto: autonomous execution with workspace-write sandbox
-    # --skip-git-repo-check: allow running outside a git repo (common for skill validation)
-    local codex_cmd="codex exec --skip-git-repo-check --full-auto --json"
-    if [ "$enable_network" = true ]; then
-        codex_cmd="codex exec --skip-git-repo-check --dangerously-bypass-approvals-and-sandbox --json"
-    fi
+    build_codex_args "$enable_network"
 
     # Execute Codex in non-interactive mode
-    $codex_cmd "Task: $task_desc
+    codex exec "${CODEX_ARGS[@]}" "Task: $task_desc
 Task Name: $task_name
 Task Directory: $task_dir
 
@@ -343,13 +357,7 @@ run_executor() {
     # Read executor prompt template and substitute {TASK_DIR} placeholder
     local exec_prompt=$(cat "$SKILL_DIR/templates/executor-prompt.md" | sed "s|{TASK_DIR}|$task_dir|g")
 
-    # Build base codex command options
-    # --full-auto: autonomous execution with workspace-write sandbox
-    # --skip-git-repo-check: allow running outside a git repo
-    local codex_opts="--skip-git-repo-check --full-auto --json"
-    if [ "$enable_network" = true ]; then
-        codex_opts="--skip-git-repo-check --dangerously-bypass-approvals-and-sandbox --json"
-    fi
+    build_codex_args "$enable_network"
 
     # Build the prompt
     local prompt="Continue working on the task.
@@ -373,10 +381,10 @@ $exec_prompt"
         print_info "Resuming session: $session_id"
 
         # Resume the previous session with new instructions
-        codex exec $codex_opts resume "$session_id" "$prompt" 2>&1 | tee -a "$task_dir/session.log"
+        codex exec resume "${CODEX_ARGS[@]}" "$session_id" "$prompt" 2>&1 | tee -a "$task_dir/session.log"
     else
         # Start a new session
-        codex exec $codex_opts "$prompt" 2>&1 | tee "$task_dir/session.log"
+        codex exec "${CODEX_ARGS[@]}" "$prompt" 2>&1 | tee -a "$task_dir/session.log"
 
         # Save session ID
         local session_id
@@ -484,7 +492,7 @@ main() {
     CURRENT_TASK_NAME="$task_name"
 
     if [ "$enable_network" = true ]; then
-        print_warning "Network mode uses --dangerously-bypass-approvals-and-sandbox. Use only in an isolated environment."
+        print_warning "Network mode uses sandbox_mode=danger-full-access with approval_policy=never. Use only in an isolated environment."
     fi
 
     # Main loop
