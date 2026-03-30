@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jujutsu"
+  short_description: "Prefer jj commands in Jujutsu repos"
+  default_prompt: "Use $Jujutsu to handle version-control work in this Jujutsu repository."
