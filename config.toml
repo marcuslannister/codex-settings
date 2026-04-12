@@ -41,5 +41,5 @@ network_access = true
 # args = ["chrome-devtools-mcp@latest", "--no-usage-statistics", "--autoConnect"]
 
 [tui]
-status_line = ["model-with-reasoning", "context-remaining", "current-dir", "model-name", "git-branch", "context-used", "context-window-size", "used-tokens", "total-output-tokens", "five-hour-limit", "weekly-limit"]
+status_line = ["model-with-reasoning", "context-remaining", "git-branch", "context-used", "context-window-size", "used-tokens", "total-output-tokens", "five-hour-limit"]
 theme = "catppuccin-latte"
