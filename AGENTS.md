@@ -15,6 +15,11 @@ This repository is a Codex configuration and skills collection. Keep changes sco
 - `cd superpowers/tests/claude-code && ./run-skill-tests.sh --integration`: run Claude Code skill tests.
 - `cd superpowers/tests/brainstorm-server && npm test`: run the brainstorm server Node test.
 
+## Search Tools
+- Prefer `rg "pattern"` for text search and `rg --files` for file listing.
+- Prefer `fd name` for path discovery and `fd -t d name` for directory discovery.
+- Fall back to `grep` or `find` only when `rg` or `fd` is unavailable.
+
 ## Coding Style & Naming Conventions
 Follow the local style of the area you edit. In JS/TS files, use 2-space indentation and keep imports grouped cleanly. Shell scripts should use `#!/usr/bin/env bash` and `set -euo pipefail`. Keep prompt and utility file names descriptive and stable, and preserve exact sentinel names such as `SKILL.md`, `AGENTS.md`, and policy/config filenames. When editing skills, keep frontmatter concise and trigger-focused.
 
