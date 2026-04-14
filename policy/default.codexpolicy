@@ -23,6 +23,12 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["fd"],
+    decision = "allow",
+    match = [["fd", "foo"], ["fd", "-t", "d", "foo"]],
+)
+
+prefix_rule(
     pattern = ["find"],
     decision = "allow",
     match = [["find", "."]],
