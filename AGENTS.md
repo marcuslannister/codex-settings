@@ -58,15 +58,13 @@ Example format (no quotation marks):
 😇 it is not good to be read
 👉 it's hard to read (Unnatural phrasing)
 
-## Safety Rails
-
-## NEVER
+## Never
 
 - Modify `.env`, lockfiles, or CI secrets without explicit approval
 - Remove feature flags without searching all call sites
 - Commit without running tests
 
-## ALWAYS
+## Always
 
 - Show diff before committing
 - Update CHANGELOG for user-facing changes
