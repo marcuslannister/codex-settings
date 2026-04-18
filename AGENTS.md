@@ -57,3 +57,31 @@ Example format (no quotation marks):
 
 😇 it is not good to be read
 👉 it's hard to read (Unnatural phrasing)
+
+## Safety Rails
+
+## NEVER
+
+- Modify `.env`, lockfiles, or CI secrets without explicit approval
+- Remove feature flags without searching all call sites
+- Commit without running tests
+
+## ALWAYS
+
+- Show diff before committing
+- Update CHANGELOG for user-facing changes
+
+## Verification
+
+- API changes: update contract tests under `tests/contracts/`
+- UI changes: capture before/after screenshots
+
+## Compact Instructions
+
+Preserve:
+
+1. Architecture decisions (NEVER summarize)
+2. Modified files and key changes
+3. Current verification status (pass/fail commands)
+4. Open risks, TODOs, rollback notes
+

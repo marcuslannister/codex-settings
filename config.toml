@@ -32,6 +32,7 @@ voice_transcription = true
 network_access = true
 
 # MCP Tools
+# Example servers
 # [mcp_servers.claude]
 # command = "claude"
 # args = ["mcp", "serve"]
@@ -40,6 +41,55 @@ network_access = true
 # command = "npx"
 # args = ["chrome-devtools-mcp@latest", "--no-usage-statistics", "--autoConnect"]
 
+# Local active servers
+# Machine-specific MCP servers stay here because Codex loads a single ~/.codex/config.toml.
+
+# [mcp_servers.context7]
+# type = "stdio"
+# command = "npx"
+# args = ["-y", "@upstash/context7-mcp@latest"]
+
+# [mcp_servers.desktop-commander]
+# type = "stdio"
+# command = "npx"
+# args = ["-y", "@wonderwhy-er/desktop-commander"]
+
+# [mcp_servers.mcp-deepwiki]
+# type = "stdio"
+# command = "npx"
+# args = ["-y", "mcp-deepwiki@latest"]
+
+# [mcp_servers.mcp-server-time]
+# type = "stdio"
+# command = "uvx"
+# args = ["mcp-server-time", "--local-timezone=Asia/Shanghai"]
+
+# [mcp_servers.mcp-shrimp-task-manager]
+# type = "stdio"
+# command = "npx"
+# args = ["-y", "mcp-shrimp-task-manager"]
+
+# [mcp_servers.mcp-shrimp-task-manager.env]
+# DATA_DIR = "/Users/lostsheep/tools/mcp-shrimp-task-manager/data"
+# ENABLE_GUI = "false"
+# TEMPLATES_USE = "zh"
+
+# [mcp_servers.playwright]
+# type = "stdio"
+# command = "npx"
+# args = ["@playwright/mcp@latest"]
+
+# [mcp_servers.sequential-thinking]
+# type = "stdio"
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+
 [tui]
 status_line = ["model-with-reasoning", "context-remaining", "git-branch", "context-used", "context-window-size", "used-tokens", "total-output-tokens", "five-hour-limit"]
 theme = "catppuccin-latte"
+
+[projects."/Users/ken/github/router-test"]
+trust_level = "trusted"
+
+[projects."/Users/ken/github/Marcus/codex-settings"]
+trust_level = "trusted"
