@@ -61,17 +61,18 @@ Example format (no quotation marks):
 ## Never
 
 - Modify `.env`, lockfiles, or CI secrets without explicit approval
-- Remove feature flags without searching all call sites
-- Commit without running tests
+- Remove a referenced symbol without searching call sites first
+- Commit without running tests when the project has a fast test suite
 
 ## Always
 
 - Show diff before committing
-- Update CHANGELOG for user-facing changes
+- Update CHANGELOG for user-facing changes if the project keeps one
 
 ## Verification
 
-- API changes: update contract tests under `tests/contracts/`
+- Run the project's test and lint commands before declaring a change complete
+- API changes: update or add contract tests if the project has them
 - UI changes: capture before/after screenshots
 
 ## Compact Instructions
