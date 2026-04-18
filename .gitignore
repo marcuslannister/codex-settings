@@ -21,6 +21,15 @@
 history.jsonl
 sessions
 version.json
+auth.json
+installation_id
+.personality_migration
+models_cache.json
+config.toml.*
+cache/
+shell_snapshots/
+state_*.sqlite*
+logs_*.sqlite*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -5,7 +5,7 @@ This repository is a Codex configuration and skills collection. Keep changes sco
 
 - `config.toml`, `configs/`, `policy/`, `rules/`: Codex runtime configuration, provider profiles, and policy files.
 - `prompts/`: reusable slash-prompt templates in Markdown.
-- `skills/*/SKILL.md`: installable Codex skills; each skill must keep the file name exactly `SKILL.md`. Current examples include `skills/Jujutsu/` and the `.system/skill-creator/` tooling.
+- `skills/*/SKILL.md`: installable Codex skills; each skill must keep the file name exactly `SKILL.md`. Current examples include `skills/jujutsu/` and the `.system/skill-creator/` tooling.
 - `scripts/`: small repo utilities such as config extractors and shell tests.
 - `superpowers/skills/` and `superpowers/tests/`: bundled “superpowers” skills plus shell and Node-based regression tests.
 
