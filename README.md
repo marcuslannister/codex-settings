@@ -437,6 +437,15 @@ args = ["-y", "@upstash/context7-mcp@latest"]
 
 Codex automatically reads `AGENTS.md` files in your project to understand context. Please always create one in your project root with `/init` command on your first codex run.
 
+## Maintenance Verification
+
+For changes to the trusted-projects maintenance scripts, run the shell tests directly:
+
+```bash
+bash scripts/test-extract-trusted-projects.sh
+bash scripts/test-merge-trusted-projects.sh
+```
+
 ## References
 
 - [Codex CLI Official Docs](https://developers.openai.com/codex/cli/)
