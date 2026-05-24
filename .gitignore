@@ -25,6 +25,7 @@ auth.json
 installation_id
 .personality_migration
 models_cache.json
+config.toml
 config.toml.*
 cache/
 shell_snapshots/
