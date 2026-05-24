@@ -44,3 +44,6 @@ jspm_packages/
 # Temp files
 tmp
 .research
+
+# Claude local runtime settings
+.claude/settings.local.json
