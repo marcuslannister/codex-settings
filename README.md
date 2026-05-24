@@ -46,7 +46,13 @@ npx -y skills add feiskyer/codex-settings
 
 ### Basic Configuration
 
-The default `config.toml` uses LiteLLM as a gateway. To use it:
+The portable [config.base.toml](config.base.toml) is the baseline Codex configuration. Codex reads `~/.codex/config.toml` and may rewrite it with machine-local state, so create the live config from the baseline:
+
+```bash
+cp ~/.codex/config.base.toml ~/.codex/config.toml
+```
+
+The baseline uses LiteLLM as a gateway. To use it:
 
 1. Install LiteLLM and Codex CLI:
 
@@ -105,10 +111,10 @@ The default `config.toml` uses LiteLLM as a gateway. To use it:
 
 ### Main Configuration
 
-- [config.toml](config.toml): Default configuration using LiteLLM gateway
-  - Model: `gpt-5` via `model_provider = "github"` (Copilot proxy on `http://localhost:4000`)
-  - Approval policy: `on-request`; reasoning summary: `detailed`; reasoning effort: `high`; raw agent reasoning visible
-  - MCP servers: `claude` (local), `exa` (hosted), `chrome` (DevTools over `npx`)
+- [config.base.toml](config.base.toml): Portable baseline configuration using LiteLLM gateway defaults
+  - Copy it to `config.toml` before running Codex locally
+  - `config.toml` is ignored because Codex may write absolute paths, trusted projects, marketplace cache paths, and hook state into it
+  - Machine-specific MCP servers and local runtime state belong in `config.toml`, not in the committed baseline
 
 ### Alternative Configurations
 
