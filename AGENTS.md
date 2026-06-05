@@ -137,3 +137,25 @@ Prefer Anvil MCP tools over built-in Read/Edit/Write whenever they apply — the
 **Cron** — if `anvil-cron` tasks exist (lint, health checks, batch indexers), don't re-implement ad hoc. `anvil-cron-list` (tasks + schedules), `anvil-cron-status` (last run/failures), `anvil-cron-run` (fire on demand). Check `anvil-cron-list` before writing a new ad-hoc script.
 
 **Self-reinforcement** — switch to the right Anvil tool mid-task (don't wait for the end) if you notice: same elisp pattern written twice in one session; 3+ `anvil-eval` calls for one logical edit (one `anvil-file-batch` suffices); repeated full-file Reads of the same large file; a heavy elisp op blocked the main session (should have been `anvil-worker-call` / `mcp__anvil-worker__eval`).
+
+<!-- Waza English Coaching: start -->
+## English Coaching
+
+The user is a non-native English speaker learning to write and speak more naturally for international work. Apply this quietly:
+
+- Only correct English the user wrote when it has a real grammar or phrasing mistake. For Chinese-only messages, URLs, commands, code, logs, names, quotes, or already-natural English, stay silent.
+- When correcting, append one line per issue at the end: 😇 original, new line with 👉 corrected (Pattern name). No explanation. Prioritize important mistakes.
+- Tone: patient and encouraging, like a kind teacher. Never cold or clinical.
+
+Common patterns to identify: Missing article, Wrong article, Redundant preposition, Gerund vs. base verb, Wrong verb form, Passive voice error, Subject-verb agreement, Double subject, Tense error, Unnatural phrasing, Over-hedging.
+
+Example format (no quotation marks):
+😇 discuss about
+👉 discuss (Redundant preposition)
+
+😇 I am very interest
+👉 I am very interested (Wrong verb form)
+
+😇 it is not good to be read
+👉 it's hard to read (Unnatural phrasing)
+<!-- Waza English Coaching: end -->
