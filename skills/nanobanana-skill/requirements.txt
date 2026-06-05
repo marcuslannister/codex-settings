@@ -1,4 +1,0 @@
-python-dotenv
-httpx[socks]
-google-genai>=1.52.0
-Pillow
