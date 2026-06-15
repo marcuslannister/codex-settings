@@ -36,18 +36,45 @@ command = "anvil-stdio.sh"
 args = [ "--server-id=emacs-eval"]
 
 [tui]
-status_line = [
-    "model-with-reasoning",
-    "context-remaining",
-    "git-branch",
-    "context-used",
-    "context-window-size",
-    "used-tokens",
-    "total-output-tokens",
-    "five-hour-limit",
-]
+status_line = ["model-with-reasoning", "git-branch", "context-used", "project-name", "branch-changes", "run-state", "thread-title"]
 theme = "monokai-extended-light"
 status_line_use_colors = true
 
 [tui.model_availability_nux]
 "gpt-5.5" = 4
+
+[marketplaces.claude-plugins-official]
+last_updated = "2026-06-15T05:30:37Z"
+last_revision = "be88f154f6ab4f0c5142585ede3d9763aca38bd4"
+source_type = "git"
+source = "https://github.com/anthropics/claude-plugins-official.git"
+
+[marketplaces.openai-codex]
+last_updated = "2026-06-12T05:31:05Z"
+last_revision = "807e03ac9d5aa23bc395fdec8c3767500a86b3cf"
+source_type = "git"
+source = "https://github.com/openai/codex-plugin-cc.git"
+
+[marketplaces.visual-explainer-marketplace]
+last_updated = "2026-06-12T05:31:08Z"
+last_revision = "8f1d0e38ab0f265632a31d2fd032f7b730c98c15"
+source_type = "git"
+source = "https://github.com/nicobailon/visual-explainer.git"
+
+[plugins."claude-code-setup@claude-plugins-official"]
+enabled = true
+
+[plugins."frontend-design@claude-plugins-official"]
+enabled = true
+
+[plugins."superpowers@claude-plugins-official"]
+enabled = true
+
+[plugins."codex@openai-codex"]
+enabled = true
+
+[plugins."visual-explainer@visual-explainer-marketplace"]
+enabled = true
+
+[shell_environment_policy]
+inherit = "core"
