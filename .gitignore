@@ -47,8 +47,6 @@ process_manager/
 rules/
 sqlite/
 vendor_imports/
-scripts
-skills
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
