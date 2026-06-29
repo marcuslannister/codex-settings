@@ -1,17 +1,14 @@
-# Codex CLI Configuration
-# This configuration uses LiteLLM as the model provider gateway
-# See: https://docs.litellm.ai/docs/simple_proxy
 model = "gpt-5.5"
-# model_provider = "github"
 model_verbosity = "medium"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 model_reasoning_effort = "xhigh"
 suppress_unstable_features_warning = true
-web_search = "disabled" # live
+web_search = "disabled"
 personality = "pragmatic"
 
 [features]
+hooks = true
 skills = true
 unified_exec = true
 shell_snapshot = true
@@ -20,20 +17,25 @@ steer = true
 collaboration_modes = true
 personality = true
 voice_transcription = true
+js_repl = false
 
 [sandbox_workspace_write]
 network_access = true
 
 [mcp_servers.anvil]
 command = "anvil-stdio.sh"
-args = [ "--server-id=anvil", "--init-function=anvil-enable", "--stop-function=anvil-disable"]
+args = [
+    "--server-id=anvil",
+    "--init-function=anvil-enable",
+    "--stop-function=anvil-disable",
+]
 
 [mcp_servers.anvil.tools.emacs-eval]
 approval_mode = "approve"
 
 [mcp_servers.emacs-eval]
 command = "anvil-stdio.sh"
-args = [ "--server-id=emacs-eval"]
+args = ["--server-id=emacs-eval"]
 
 [tui]
 status_line = ["model-with-reasoning", "git-branch", "context-used", "project-name", "branch-changes", "run-state", "thread-title"]
