@@ -45,29 +45,5 @@ status_line_use_colors = true
 [tui.model_availability_nux]
 "gpt-5.5" = 4
 
-[marketplaces.claude-plugins-official]
-last_updated = "2026-06-15T05:30:37Z"
-last_revision = "be88f154f6ab4f0c5142585ede3d9763aca38bd4"
-source_type = "git"
-source = "https://github.com/anthropics/claude-plugins-official.git"
-
-[marketplaces.visual-explainer-marketplace]
-last_updated = "2026-06-12T05:31:08Z"
-last_revision = "8f1d0e38ab0f265632a31d2fd032f7b730c98c15"
-source_type = "git"
-source = "https://github.com/nicobailon/visual-explainer.git"
-
-[plugins."claude-code-setup@claude-plugins-official"]
-enabled = true
-
-[plugins."frontend-design@claude-plugins-official"]
-enabled = true
-
-[plugins."superpowers@claude-plugins-official"]
-enabled = true
-
-[plugins."visual-explainer@visual-explainer-marketplace"]
-enabled = true
-
 [shell_environment_policy]
 inherit = "core"
