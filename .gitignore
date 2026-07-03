@@ -64,3 +64,6 @@ tmp
 
 # Claude local runtime settings
 .claude/settings.local.json
+
+# Codex runtime-managed plugin cache (241MB app-server binary)
+plugins/
