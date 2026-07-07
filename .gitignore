@@ -67,3 +67,7 @@ tmp
 
 # Codex runtime-managed plugin cache (241MB app-server binary)
 plugins/
+
+# Codex runtime-managed skills dir (.system bundled skills); the old tracked
+# skills symlink is gone — Codex reads only ~/.agents/skills (agent-scripts ADR 0001)
+skills/
