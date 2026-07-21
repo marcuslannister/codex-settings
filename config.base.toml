@@ -1,10 +1,9 @@
-model = "gpt-5.5"
+kmodel = "gpt-5.6-sol"
 model_verbosity = "medium"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 suppress_unstable_features_warning = true
-web_search = "disabled"
 personality = "pragmatic"
 
 [features]
@@ -38,13 +37,25 @@ command = "anvil-stdio.sh"
 args = ["--server-id=emacs-eval"]
 
 [tui]
-status_line = ["model-with-reasoning", "git-branch", "context-used", "project-name", "branch-changes", "run-state", "thread-title"]
+status_line = ["model-with-reasoning", "git-branch", "context-used", "project-name", "branch-changes", "run-state", "thread-title", "five-hour-limit"]
 theme = "monokai-extended-light"
 status_line_use_colors = true
 
 [tui.model_availability_nux]
-"gpt-5.5" = 4
+"gpt-5.6-sol" = 4
 
 [shell_environment_policy]
 inherit = "core"
 set = { NO_PROXY = "localhost,127.0.0.1,::1", no_proxy = "localhost,127.0.0.1,::1" }
+
+[desktop]
+followUpQueueMode = "queue"
+dock-icon-preference = "app-default"
+sansFontSize = 16
+codeFontSize = 14
+
+[network]
+proxy_url = "http://x:aoc_800e876370ac6a97646ad9de6a775f8b6beff3f95647be86e3bccf1d924d06cb@192.168.8.16:10255"
+
+[notice]
+hide_rate_limit_model_nudge = true
