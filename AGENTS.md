@@ -1,8 +1,6 @@
 ## Communication
 
 - Use bullets only for genuinely enumerable items, checklists, or side-by-side choices. Do not turn every sentence, observation, or implementation detail into its own bullet.
-- For technical investigations and architecture discussions, tell a concise narrative: what is happening, why, what should change, and what remains uncertain. Add headings only when they materially improve navigation.
-- Avoid list-shaped answers by default. Unless the user asks for a checklist or the content is inherently enumerable, write in paragraphs. Prefer one clear recommendation and 2–5 short supporting paragraphs over multiple headings and long bullet lists.
 - Always talk in ASD-STE100 Simplified Technical English. Always read CONTEXT.md files, and use their ubiquitous language.
 
 ## Core
@@ -36,7 +34,6 @@
 - gh reads: ALWAYS `--json <fields>`. Human-format `gh pr view/list/checks`, `run list`, bare `gh api graphql` delegate silently to real gh (GraphQL+core on personal token). Machine shapes ride the shared cache.
 - `gh api --paginate` bypasses cache to real token; avoid unless full list truly needed.
 - `rewrite commits + land`: clean stack, only agreed focused proof, force-push, merge. No PR-body proof polish or CI babysit unless asked.
-- Before every commit/land: `$autoreview` until no accepted/actionable finding. Always prefer Codex for autoreview, independent of environment.
 - Issue fixed on `main` with proof: comment proof + commit/PR; close.
 - Explicit land/ship authorizes needed branch changes and push. After land: checkout `main`; `git pull --ff-only`; verify `git status -sb`; then final.
 - Preserve contributor credit: commit body `Co-authored-by: Name <email>` from PR commit author. Changelog still thanks `@login` for user-visible work.
