@@ -71,3 +71,9 @@ plugins/
 # Codex runtime-managed skills dir (.system bundled skills); the old tracked
 # skills symlink is gone — Codex reads only ~/.agents/skills (agent-scripts ADR 0001)
 skills/
+
+# Codex queue and thread runtime state
+.sandbox_migration
+queue_*.sqlite*
+thread_history_*.sqlite*
+thread-writer-locks/
