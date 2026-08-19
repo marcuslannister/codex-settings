@@ -12,37 +12,53 @@ model_auto_compact_token_limit = 900000
 
 [features]
 apps = true
-multi_agent = true
-personality = true
-shell_snapshot = true
-unified_exec = true
 guardian_approval = true
 prevent_idle_sleep = true
 memories = true
 goals = true
 hooks = true
+skills = true
+unified_exec = true
+shell_snapshot = true
+multi_agent = true
+steer = true
+collaboration_modes = true
+personality = true
+voice_transcription = true
+js_repl = false
 
 [sandbox_workspace_write]
 network_access = true
 
 [mcp_servers.anvil]
 command = "anvil-stdio.sh"
-args = [
-    "--server-id=anvil",
-    "--init-function=anvil-enable",
-    "--stop-function=anvil-disable",
-]
+args = [ "--server-id=anvil", "--init-function=anvil-enable", "--stop-function=anvil-disable"]
 
 [mcp_servers.anvil.tools.emacs-eval]
 approval_mode = "approve"
 
 [mcp_servers.emacs-eval]
 command = "anvil-stdio.sh"
-args = ["--server-id=emacs-eval"]
+args = [ "--server-id=emacs-eval"]
+
+[mcp_servers.emacs-eval.tools.file-batch-across]
+approval_mode = "approve"
 
 [mcp_servers.codegraph]
 command = "codegraph"
 args = ["serve", "--mcp"]
+
+[plugins."waza@waza"]
+enabled = false
+
+[plugins."visualize@openai-bundled"]
+enabled = true
+
+[plugins."claude-mem@claude-mem-local"]
+enabled = true
+
+[plugins."ponytail@ponytail"]
+enabled = true
 
 [tui]
 status_line = ["model-with-reasoning", "git-branch", "context-used", "project-name", "branch-changes", "run-state", "five-hour-limit"]
@@ -62,3 +78,5 @@ dock-icon-preference = "app-default"
 
 [notice.model_migrations]
 "gpt-5.4-mini" = "gpt-5.6-luna"
+
+
