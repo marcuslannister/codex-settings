@@ -27,6 +27,9 @@ personality = true
 voice_transcription = true
 js_repl = false
 
+[memories]
+disable_on_external_context = true
+
 [sandbox_workspace_write]
 network_access = true
 
