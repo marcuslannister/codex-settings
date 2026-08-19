@@ -60,6 +60,9 @@ enabled = true
 [plugins."ponytail@ponytail"]
 enabled = true
 
+[plugins."nowledge-mem@nowledge-community"]
+enabled = true
+
 [tui]
 status_line = ["model-with-reasoning", "git-branch", "context-used", "project-name", "branch-changes", "run-state", "five-hour-limit"]
 theme = "monokai-extended-light"
