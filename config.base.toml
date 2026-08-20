@@ -57,9 +57,6 @@ enabled = false
 [plugins."visualize@openai-bundled"]
 enabled = true
 
-[plugins."claude-mem@claude-mem-local"]
-enabled = true
-
 [plugins."ponytail@ponytail"]
 enabled = true
 
@@ -84,5 +81,4 @@ dock-icon-preference = "app-default"
 
 [notice.model_migrations]
 "gpt-5.4-mini" = "gpt-5.6-luna"
-
 
