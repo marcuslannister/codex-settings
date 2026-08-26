@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Point `AGENTS.md` to the tracked generated Codex instructions
 - Add agent guidance for domain docs, GitHub issues, and triage labels
 - Add the Herdr agent-state hook
 - Disable Codex local Memory by default
