@@ -28,23 +28,42 @@ deny() {
   exit 0
 }
 
-ask() {
-  local reason="$1"
-  jq -n --arg reason "$reason" '{
+rewrite() {
+  local replacement="$1"
+  jq -n --arg command "$replacement" '{
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
-      permissionDecision: "ask",
-      permissionDecisionReason: $reason
+      permissionDecision: "allow",
+      updatedInput: {command: $command}
     }
   }'
   exit 0
 }
+
+rewrite_known_command() {
+  local find_re='^find[[:space:]]+([^[:space:];|&]+)[[:space:]]+-name[[:space:]]+([^[:space:];|&]+)$'
+  local sed_re="^sed[[:space:]]+-i[[:space:]]+'?s/([^/[:space:]]+)/([^/[:space:]]+)/'?[[:space:]]+([^[:space:];|&]+)$"
+
+  if [[ "$command" =~ $find_re ]]; then
+    rewrite "fd ${BASH_REMATCH[2]} ${BASH_REMATCH[1]}"
+  fi
+  if [[ "$command" =~ $sed_re ]]; then
+    rewrite "sd ${BASH_REMATCH[1]} ${BASH_REMATCH[2]} ${BASH_REMATCH[3]}"
+  fi
+}
+
+rewrite_known_command
 
 check_segment() {
   local segment="$1"
 
   # Trim leading whitespace without using sed.
   segment="${segment#"${segment%%[!$' \t\r\n']*}"}"
+
+  # Drop a leading shell keyword, so `if ls; then ...` still reads as `ls`.
+  while [[ "$segment" =~ ^(if|then|elif|else|do|while|until|!)[[:space:]]+(.*)$ ]]; do
+    segment="${BASH_REMATCH[2]}"
+  done
 
   # Drop simple env assignments like FOO=bar command.
   while [[ "$segment" =~ ^[A-Za-z_][A-Za-z0-9_]*=([^[:space:]]+)[[:space:]]+(.*)$ ]]; do
@@ -57,12 +76,6 @@ check_segment() {
   case "$first" in
     grep)
       deny "Use rg instead of grep. Example: rg -n \"pattern\" path"
-      ;;
-    find)
-      ask "Prefer fd for simple file search (e.g. fd -t f \"name\" path). Approve if you need find's -exec / -print0 / -newer / -mtime."
-      ;;
-    sed)
-      ask "Prefer sd for find-and-replace (e.g. sd 'old' 'new' file). Approve if you need sed's -i, -n, address ranges, or multi-line scripts."
       ;;
     ls)
       deny "Use eza instead of ls. Example: eza -la --git"

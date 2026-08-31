@@ -11,6 +11,10 @@ Configs and custom prompts for [OpenAI Codex CLI](https://github.com/openai/code
   - `config.toml` is ignored: Codex may write absolute paths, trusted projects, marketplace cache, hook state
   - Machine-local MCP servers and runtime state stay in `config.toml`
 
+### Hook Safety
+
+Run `hooks/install.sh` after cloning or pulling this repository on each machine. It installs the reusable hook registrations into the local Codex configuration without replacing machine-local integrations. Review changed hooks with `/hooks`.
+
 ## Custom Prompts
 
 Stored in `prompts/`. Use via `/prompts:` in Codex.
