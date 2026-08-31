@@ -45,10 +45,10 @@ rewrite_known_command() {
   local sed_re="^sed[[:space:]]+-i[[:space:]]+'?s/([^/[:space:]]+)/([^/[:space:]]+)/'?[[:space:]]+([^[:space:];|&]+)$"
 
   if [[ "$command" =~ $find_re ]]; then
-    rewrite "fd ${BASH_REMATCH[2]} ${BASH_REMATCH[1]}"
+    rewrite "fd --glob ${BASH_REMATCH[2]} ${BASH_REMATCH[1]}"
   fi
   if [[ "$command" =~ $sed_re ]]; then
-    rewrite "sd ${BASH_REMATCH[1]} ${BASH_REMATCH[2]} ${BASH_REMATCH[3]}"
+    rewrite "sd '${BASH_REMATCH[1]}' '${BASH_REMATCH[2]}' ${BASH_REMATCH[3]}"
   fi
 }
 
