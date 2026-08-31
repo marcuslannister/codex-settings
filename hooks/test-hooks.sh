@@ -137,13 +137,13 @@ echo no > "$ANVIL_PROBE_CACHE"
 
 decision deny  'grep -r foo .'
 decision deny  'ls'
-rewrite 'fd x .' 'find . -name x'
-rewrite "fd '*.ts' src" "find src -name '*.ts'"
+rewrite 'fd --glob x .' 'find . -name x'
+rewrite "fd --glob '*.ts' src" "find src -name '*.ts'"
 decision allow 'find . -maxdepth 3'
 decision allow 'find . -inum 42'
 decision allow 'find . -exec rm {} ;'
-rewrite 'sd a b f' 'sed -i s/a/b/ f'
-rewrite 'sd a b f' "sed -i 's/a/b/' f"
+rewrite "sd 'a' 'b' f" 'sed -i s/a/b/ f'
+rewrite "sd 'a' 'b' f" "sed -i 's/a/b/' f"
 decision allow 'sed -i s/a/b/g f'
 decision allow 'git grep foo'
 decision allow 'rg foo'

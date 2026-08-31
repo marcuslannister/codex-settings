@@ -21,6 +21,7 @@ unwrap_shell() {
   done
   printf '%s' "$c"
 }
+
 # Removes quote syntax. A span holding one plain token keeps its text, because
 # `git 'push'` still runs push. A span holding a space or a shell metacharacter
 # is data and goes away, so rg -i "cli|env|gh" cannot read as a bare `env`.

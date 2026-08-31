@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Preserve glob and replacement arguments in modern CLI rewrites
 - Add portable installer and reusable safety hooks for Codex
 - Point `AGENTS.md` to the tracked generated Codex instructions
 - Add agent guidance for domain docs, GitHub issues, and triage labels
