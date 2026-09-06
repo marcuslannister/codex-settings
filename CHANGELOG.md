@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Standardize the safety hooks on JSON decisions, fail closed when a hook cannot run, share command parsing with separator data, and add a self-check
 - Preserve glob and replacement arguments in modern CLI rewrites
 - Add portable installer and reusable safety hooks for Codex
 - Point `AGENTS.md` to the tracked generated Codex instructions
