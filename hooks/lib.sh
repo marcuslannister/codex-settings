@@ -7,11 +7,8 @@
 # The pipeline is: unwrap nested shells -> remove remaining quoted spans ->
 # split on the shell operators -> normalise each segment.
 
-# Constant payload, so the common case (every guard allowing) spawns no jq.
-guard_allow() {
-  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}'
-  exit 0
-}
+# A successful hook with no output leaves the tool allowed by default.
+guard_allow() { exit 0; }
 
 guard_deny() {
   jq -n --arg reason "$1" '{

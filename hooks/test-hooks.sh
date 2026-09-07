@@ -1,19 +1,23 @@
 #!/bin/bash
 # Self-check: feeds each hook a command and asserts the outcome.
-# Every hook answers with a permissionDecision on stdout. Silence is a failure,
-# not an allow: index.ts blocks when a guard produces no decision, so a hook
-# that crashes must not read as "safe" here either.
+# A successful empty response is an allow; nonzero or malformed output is a
+# failure, so a crashing hook must not read as safe.
 cd "$(dirname "$0")" || exit 1
 MODERN=./enforce-modern-cli.sh
 fail=0
 
 payload() { printf '{"tool_name":"Bash","tool_input":{"command":%s}}' "$(jq -Rn --arg c "$1" '$c')"; }
 
-# Prints the hook's decision, or `none` when it stayed silent or emitted junk.
-verdict() { jq -r '.hookSpecificOutput.permissionDecision // "none"' 2>/dev/null <<<"$1" || echo none; }
+# Runs a hook and prints its decision. Codex treats successful empty output as allow.
+hook_decision() {
+  local out
+  out=$("$1" <<<"$2" 2>/dev/null) || { echo none; return; }
+  [ -n "$out" ] || { echo allow; return; }
+  jq -r '.hookSpecificOutput.permissionDecision // "none"' 2>/dev/null <<<"$out" || echo none
+}
 
 check() { # check <script> <expected: allow|deny> <command>
-  actual=$(verdict "$(payload "$3" | "./$1" 2>/dev/null)")
+  actual=$(hook_decision "./$1" "$(payload "$3")")
   if [ "$actual" != "$2" ]; then
     echo "FAIL $1: expected $2, got $actual for: $3"
     fail=1
@@ -21,7 +25,7 @@ check() { # check <script> <expected: allow|deny> <command>
 }
 
 decision() { # decision <expected: allow|deny> <command>
-  actual=$(verdict "$(payload "$2" | "$MODERN" 2>/dev/null)")
+  actual=$(hook_decision "$MODERN" "$(payload "$2")")
   if [ "$actual" != "$1" ]; then
     echo "FAIL enforce-modern-cli.sh: expected $1, got $actual for: $2"
     fail=1
@@ -206,7 +210,7 @@ REDIRECT=./redirect-to-anvil.sh
 echo ok > "$ANVIL_PROBE_CACHE"
 
 redirect_decision() { # redirect_decision <expected: allow|deny> <tool_name> <tool_input-json>
-  actual=$(verdict "$(printf '{"tool_name":"%s","tool_input":%s}' "$2" "$3" | "$REDIRECT" 2>/dev/null)")
+  actual=$(hook_decision "$REDIRECT" "$(printf '{"tool_name":"%s","tool_input":%s}' "$2" "$3")")
   if [ "$actual" != "$1" ]; then
     echo "FAIL redirect-to-anvil.sh: expected $1, got $actual for: $2 $3"
     fail=1
