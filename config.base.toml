@@ -17,14 +17,12 @@ prevent_idle_sleep = true
 memories = false
 goals = true
 hooks = true
-skills = true
 unified_exec = true
 shell_snapshot = true
 multi_agent = true
 steer = true
 collaboration_modes = true
 personality = true
-voice_transcription = true
 js_repl = false
 
 [memories]

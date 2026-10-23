@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Remove unsupported skills and voice transcription feature flags from the shared Codex configuration
 - Add a portable Codex Stop hook for Nowledge Mem capture and session-scoped skill outcome reporting
 - Standardize safety-hook deny and rewrite responses, allow successful hooks to exit silently, share command parsing with separator data, and add a self-check
 - Preserve glob and replacement arguments in modern CLI rewrites
