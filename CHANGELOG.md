@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Point `AGENTS.md` at the generated Codex instructions in the `home` repo (`~/Projects/home/AGENTS.codex.md`)
+
 - Update the Herdr Codex integration version marker from 8 to 10
 - Remove unsupported skills and voice transcription feature flags from the shared Codex configuration
 - Add a portable Codex Stop hook for Nowledge Mem capture and session-scoped skill outcome reporting
