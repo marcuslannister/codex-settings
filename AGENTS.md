@@ -1,1 +1,1 @@
-../agent-scripts/AGENTS.codex.md
+../home/AGENTS.codex.md
