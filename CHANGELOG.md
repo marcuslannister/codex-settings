@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Remove seven subagents with no calls in 90 days (command-creator, deep-reflector, github-issue-fixer, insight-documenter, instruction-reflector, pr-reviewer, ui-engineer).
+- Auto compact at 650000 tokens, 65% of the 1M context window (was 90%).
+- Load the codegraph MCP server only in indexed repos: Codex reads `mcp_servers` from a trusted project's `.codex/config.toml`, so the global entry is gone. First-turn input in `/tmp`: 25500 → 22919 tokens with the Nowledge lean patch.
 - Point `AGENTS.md` at the generated Codex instructions in the `home` repo (`~/Projects/home/AGENTS.codex.md`)
 
 - Update the Herdr Codex integration version marker from 8 to 10
