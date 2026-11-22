@@ -45,10 +45,6 @@ args = [ "--server-id=emacs-eval"]
 [mcp_servers.emacs-eval.tools.file-batch-across]
 approval_mode = "approve"
 
-[mcp_servers.codegraph]
-command = "codegraph"
-args = ["serve", "--mcp"]
-
 [plugins."waza@waza"]
 enabled = false
 
