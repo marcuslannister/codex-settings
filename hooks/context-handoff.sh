@@ -27,10 +27,19 @@ dir="${TMPDIR:-/tmp}/codex-ctx"
 warned="$dir/$session.warned"
 [ ! -e "$warned" ] || exit 0
 
-# The last 1 MB holds many token_count events. tail -n +2 drops a line cut in
-# half. An event with info null has no usage: skip it, keep the newest real one.
-tokens=$(tail -c 1048576 "$transcript" | tail -n +2 | grep -F '"type":"token_count"' |
-  jq -r 'select(.payload.info != null) | .payload.info.last_token_usage.total_tokens' | tail -n 1)
+# Prints the newest valid fill on stdin, or nothing. tail -n +2 drops a line cut
+# in half (or session_meta, when stdin is the whole rollout). An event with info
+# null has no usage: skip it, keep the newest real one.
+newest_fill() {
+  tail -n +2 | grep -F '"type":"token_count"' |
+    jq -r 'select(.payload.info != null) | .payload.info.last_token_usage.total_tokens | numbers' | tail -n 1
+}
+# The last 1 MiB holds many token_count events. A long tool output can push them
+# all out of it: then read the whole rollout once.
+# shortcut: one full read, not a backward search in chunks; upgrade if a rollout
+# often has more than 1 MiB after its last count.
+tokens=$(tail -c 1048576 "$transcript" | newest_fill || true)
+[ -n "$tokens" ] || tokens=$(newest_fill < "$transcript" || true)
 [[ $tokens =~ ^[0-9]+$ ]] && [ "$tokens" -ge "$HANDOFF_TOKENS" ] || exit 0
 
 # noclobber makes the create atomic: two parallel tool calls warn once.

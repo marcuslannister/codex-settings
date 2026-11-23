@@ -236,8 +236,8 @@ redirect_decision allow Bash '{"command":"/usr/bin/sed -i s/a/b/ f.txt"}'
 # context-handoff.sh reads the fill from a rollout. A fake rollout has a running
 # total far above the fill and a trailing token_count with no info, so a wrong
 # field or a null event shows up. TMPDIR is isolated, so the once-per-session
-# marker never touches a real session. HERDR_ENV and HANDOFF_TOKENS come from
-# the caller; the default threshold is 360000.
+# marker never touches a real session. HERDR_ENV is set and an inherited
+# HANDOFF_TOKENS is cleared, so the cases use the default threshold, 360000.
 HANDOFF=./context-handoff.sh
 handoff_tmp=$(mktemp -d "${TMPDIR:-/tmp}/handoff-test.XXXXXX")
 trap 'rm -f "$ANVIL_PROBE_CACHE"; rm -r "$handoff_tmp"' EXIT
@@ -261,6 +261,7 @@ handoff() { # handoff <expected: warn|none> <session> <transcript> [extra json f
 }
 
 export HERDR_ENV=1
+unset HANDOFF_TOKENS
 rollout "$handoff_tmp/below" 359999
 rollout "$handoff_tmp/at" 360000
 handoff none s-below "$handoff_tmp/below"
@@ -270,6 +271,11 @@ HERDR_ENV= handoff none s-no-herdr "$handoff_tmp/at"
 # A subagent has its own context, and its call must not use up the main warning.
 handoff none s-sub "$handoff_tmp/at" ',"agent_id":"a1"'
 FILL=360000 handoff warn s-sub "$handoff_tmp/at"
+# More than 1 MiB of other lines after the last count: the hook reads the whole rollout.
+rollout "$handoff_tmp/gap" 360000
+yes '{"type":"response_item","payload":{"type":"function_call_output"}}' | head -n 20000 >> "$handoff_tmp/gap"
+[ "$(wc -c < "$handoff_tmp/gap")" -gt 1048576 ] || { echo "FAIL context-handoff.sh: the gap fixture is under 1 MiB"; fail=1; }
+FILL=360000 handoff warn s-gap "$handoff_tmp/gap"
 # HANDOFF_TOKENS overrides the threshold.
 rollout "$handoff_tmp/low" 5000
 HANDOFF_TOKENS=1000 FILL=5000 handoff warn s-low "$handoff_tmp/low"
