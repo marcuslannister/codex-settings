@@ -233,5 +233,51 @@ redirect_decision allow Bash '{"command":"echo ok; sed -i s/a/b/ f.txt"}'
 redirect_decision allow Bash '{"command":"FOO=1 sed -i s/a/b/ f.txt"}'
 redirect_decision allow Bash '{"command":"/usr/bin/sed -i s/a/b/ f.txt"}'
 
+# context-handoff.sh reads the fill from a rollout. A fake rollout has a running
+# total far above the fill and a trailing token_count with no info, so a wrong
+# field or a null event shows up. TMPDIR is isolated, so the once-per-session
+# marker never touches a real session. HERDR_ENV and HANDOFF_TOKENS come from
+# the caller; the default threshold is 360000.
+HANDOFF=./context-handoff.sh
+handoff_tmp=$(mktemp -d "${TMPDIR:-/tmp}/handoff-test.XXXXXX")
+trap 'rm -f "$ANVIL_PROBE_CACHE"; rm -r "$handoff_tmp"' EXIT
+
+rollout() { # rollout <file> <fill>
+  printf '%s\n' '{"type":"session_meta","payload":{}}' \
+    "{\"type\":\"event_msg\",\"payload\":{\"type\":\"token_count\",\"info\":{\"total_token_usage\":{\"total_tokens\":9000000},\"last_token_usage\":{\"total_tokens\":$2}}}}" \
+    '{"type":"event_msg","payload":{"type":"token_count","info":null}}' > "$1"
+}
+
+handoff() { # handoff <expected: warn|none> <session> <transcript> [extra json fields]
+  local out rc=0 want=""
+  out=$(printf '{"session_id":"%s","transcript_path":"%s"%s}' "$2" "$3" "${4:-}" |
+    TMPDIR=$handoff_tmp "$HANDOFF" 2>/dev/null) || rc=$?
+  [ "$1" = warn ] && want="Context fill is ${FILL:-360000} tokens (handoff threshold ${HANDOFF_TOKENS:-360000} tokens). Read $HOME/Projects/agent-scripts/global/rules/handoff.md and hand off now."
+  actual=$(jq -r '.hookSpecificOutput.additionalContext // empty' <<<"$out" 2>/dev/null)
+  if [ "$rc" != 0 ] || [ "$actual" != "$want" ]; then
+    echo "FAIL context-handoff.sh: expected $1 (exit 0), got exit $rc, '$actual' for session $2"
+    fail=1
+  fi
+}
+
+export HERDR_ENV=1
+rollout "$handoff_tmp/below" 359999
+rollout "$handoff_tmp/at" 360000
+handoff none s-below "$handoff_tmp/below"
+FILL=360000 handoff warn s-at "$handoff_tmp/at"
+handoff none s-at "$handoff_tmp/at"
+HERDR_ENV= handoff none s-no-herdr "$handoff_tmp/at"
+# A subagent has its own context, and its call must not use up the main warning.
+handoff none s-sub "$handoff_tmp/at" ',"agent_id":"a1"'
+FILL=360000 handoff warn s-sub "$handoff_tmp/at"
+# HANDOFF_TOKENS overrides the threshold.
+rollout "$handoff_tmp/low" 5000
+HANDOFF_TOKENS=1000 FILL=5000 handoff warn s-low "$handoff_tmp/low"
+# Errors must stay silent: missing rollout, empty rollout, bad threshold.
+handoff none s-gone "$handoff_tmp/missing"
+: > "$handoff_tmp/empty"
+handoff none s-empty "$handoff_tmp/empty"
+HANDOFF_TOKENS=abc handoff none s-bad "$handoff_tmp/at"
+
 [ "$fail" = 0 ] && echo "all hook checks passed"
 exit "$fail"

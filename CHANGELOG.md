@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add a PostToolUse hook, `hooks/context-handoff.sh`: in a Herdr pane it warns the agent once per session when context fill reaches 360000 tokens (36/65 of the auto compact limit), so the agent hands off to a new tab first. `HANDOFF_TOKENS` overrides the threshold. Run `hooks/install.sh`, then review the hook with `/hooks`.
 - Replace the deprecated `[features].multi_agent` with `multi_agent_v2` (stable in Codex 0.171.0): no deprecation warning at start, and `spawn_agent` and `wait_agent` still work.
 - Remove seven subagents with no calls in 90 days (command-creator, deep-reflector, github-issue-fixer, insight-documenter, instruction-reflector, pr-reviewer, ui-engineer).
 - Auto compact at 650000 tokens, 65% of the 1M context window (was 90%).

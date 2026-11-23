@@ -12,7 +12,7 @@ mkdir -p "$codex_config_dir"
 jq_program='
   def is_managed:
     (.command // "") as $command
-    | ["enforce-modern-cli.sh", "block-git-destructive.sh", "block-env-dump.sh", "gh-json.sh", "redirect-to-anvil.sh", "format-json.sh"]
+    | ["enforce-modern-cli.sh", "block-git-destructive.sh", "block-env-dump.sh", "gh-json.sh", "redirect-to-anvil.sh", "format-json.sh", "context-handoff.sh"]
     | any(. as $name | $command | contains("/hooks/" + $name));
   def strip:
     map(
@@ -33,7 +33,8 @@ jq_program='
       { matcher: "Bash|Read", hooks: [command_hook($root + "/hooks/redirect-to-anvil.sh")] }
     ])
   | .hooks.PostToolUse = ((.hooks.PostToolUse // [] | strip) + [
-      { matcher: "Write|Edit|MultiEdit", hooks: [command_hook($root + "/hooks/format-json.sh")] }
+      { matcher: "Write|Edit|MultiEdit", hooks: [command_hook($root + "/hooks/format-json.sh")] },
+      { hooks: [command_hook($root + "/hooks/context-handoff.sh")] }
     ])
 '
 
