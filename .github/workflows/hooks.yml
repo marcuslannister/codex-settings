@@ -38,4 +38,14 @@ jobs:
         run: |
           bash --version | head -n 1
           jq --version
+      # The CRLF tests cover the bug only if the jq that Git Bash picks first is a native
+      # build that writes CRLF. Count the bytes in a pipe: command substitution drops a CR.
+      - name: Check that plain jq writes CRLF and jq -b writes LF
+        if: runner.os == 'Windows'
+        run: |
+          command -v jq
+          plain=$(jq -rn '"a\nb"' | tr -cd '\r' | wc -c)
+          binary=$(jq -b -rn '"a\nb"' | tr -cd '\r' | wc -c)
+          echo "CR bytes: plain jq $plain, jq -b $binary"
+          [ "$plain" -gt 0 ] && [ "$binary" -eq 0 ] || { echo "::error::jq on PATH does not write CRLF, so the CRLF tests would not cover the bug"; exit 1; }
       - run: bash hooks/test-hooks.sh
