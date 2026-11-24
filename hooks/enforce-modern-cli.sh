@@ -18,14 +18,18 @@ command="$(jq -r '.tool_input.command // empty' <<<"$input")"
 [ -z "$command" ] && guard_allow
 read_command "$input"
 
+# A modern tool that is not installed gets no rewrite and no deny: the classic
+# command runs. Without this check the agent gets `sd: command not found`.
+have() { command -v "$1" >/dev/null 2>&1; }
+
 rewrite_known_command() {
   local find_re='^find[[:space:]]+([^[:space:];|&]+)[[:space:]]+-name[[:space:]]+([^[:space:];|&]+)$'
   local sed_re="^sed[[:space:]]+-i[[:space:]]+'?s/([^/[:space:]]+)/([^/[:space:]]+)/'?[[:space:]]+([^[:space:];|&]+)$"
 
-  if [[ "$command" =~ $find_re ]]; then
+  if have fd && [[ "$command" =~ $find_re ]]; then
     guard_rewrite "fd --glob ${BASH_REMATCH[2]} ${BASH_REMATCH[1]}"
   fi
-  if [[ "$command" =~ $sed_re ]]; then
+  if have sd && [[ "$command" =~ $sed_re ]]; then
     guard_rewrite "sd '${BASH_REMATCH[1]}' '${BASH_REMATCH[2]}' ${BASH_REMATCH[3]}"
   fi
 }
@@ -39,10 +43,10 @@ for i in "${!SEGMENTS[@]}"; do
   first=${SEGMENTS[$i]%%[[:space:]]*}
   case "$first" in
     grep)
-      guard_deny "Use rg instead of grep. Example: rg -n \"pattern\" path"
+      have rg && guard_deny "Use rg instead of grep. Example: rg -n \"pattern\" path"
       ;;
     ls)
-      guard_deny "Use eza instead of ls. Example: eza -la --git"
+      have eza && guard_deny "Use eza instead of ls. Example: eza -la --git"
       ;;
   esac
 done

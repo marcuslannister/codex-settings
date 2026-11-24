@@ -4,9 +4,9 @@
 # failure, so a crashing hook must not read as safe.
 cd "$(dirname "$0")" || exit 1
 MODERN=./enforce-modern-cli.sh
-fail=0
+fail=0 checks=0
 
-payload() { printf '{"tool_name":"Bash","tool_input":{"command":%s}}' "$(jq -Rn --arg c "$1" '$c')"; }
+payload() { printf '%s' "$1" | jq -Rsc '{tool_name:"Bash",tool_input:{command:.}}'; } # stdin, not --arg: MSYS rewrites a /usr/bin/... argument for a native jq.exe
 
 # Runs a hook and prints its decision. Codex treats successful empty output as allow.
 hook_decision() {
@@ -17,27 +17,52 @@ hook_decision() {
 }
 
 check() { # check <script> <expected: allow|deny> <command>
+  checks=$((checks + 1))
   actual=$(hook_decision "./$1" "$(payload "$3")")
   if [ "$actual" != "$2" ]; then
     echo "FAIL $1: expected $2, got $actual for: $3"
-    fail=1
+    fail=$((fail + 1))
   fi
 }
 
 decision() { # decision <expected: allow|deny> <command>
-  actual=$(hook_decision "$MODERN" "$(payload "$2")")
+  checks=$((checks + 1))
+  actual=$(PATH="$tools:$PATH" hook_decision "$MODERN" "$(payload "$2")")
   if [ "$actual" != "$1" ]; then
     echo "FAIL enforce-modern-cli.sh: expected $1, got $actual for: $2"
-    fail=1
+    fail=$((fail + 1))
   fi
 }
 
 rewrite() { # rewrite <expected-command> <command>
-  out=$(payload "$2" | "$MODERN" 2>/dev/null)
+  checks=$((checks + 1))
+  out=$(payload "$2" | PATH="$tools:$PATH" "$MODERN" 2>/dev/null)
   actual=$(jq -r '.hookSpecificOutput.updatedInput.command // empty' <<<"$out")
   if [ "$actual" != "$1" ]; then
     echo "FAIL enforce-modern-cli.sh: expected rewrite $1, got $actual for: $2"
-    fail=1
+    fail=$((fail + 1))
+  fi
+}
+
+# enforce-modern-cli.sh rewrites or denies toward a modern tool only when
+# `command -v` finds it. $tools holds empty stand-ins for rg, fd, eza, and sd, so
+# decision and rewrite do not depend on the machine. $bare holds only what the
+# hook runs (jq, dirname, cat) and no modern tool, so classic can test their absence.
+fixtures=$(mktemp -d "${TMPDIR:-/tmp}/hooks-fixtures.XXXXXX") || { echo "FAIL: cannot create the fixture folder"; exit 1; }
+trap 'rm -rf "$fixtures"' EXIT # later traps repeat this; an empty path above would write to /
+tools=$fixtures/tools bare=$fixtures/bare fj=$fixtures/fj
+mkdir "$tools" "$bare" "$fj" || { echo "FAIL: cannot create the fixture folders"; exit 1; }
+for t in rg fd eza sd; do printf '#!/bin/sh\n' > "$tools/$t"; chmod +x "$tools/$t"; done
+for t in jq dirname cat; do printf '#!/bin/sh\nexec "%s" "$@"\n' "$(command -v "$t")" > "$bare/$t"; chmod +x "$bare/$t"; done
+
+classic() { # classic <command>: without the modern tools the hook allows it unchanged
+  checks=$((checks + 1))
+  out=$(payload "$1" | PATH=$bare "$BASH" "$MODERN" 2>/dev/null) || out=crash
+  actual=allow
+  [ -z "$out" ] || actual=$(jq -r '.hookSpecificOutput | .permissionDecision + (if .updatedInput then " rewritten" else "" end)' <<<"$out" 2>/dev/null)
+  if [ "$actual" != allow ]; then
+    echo "FAIL enforce-modern-cli.sh: expected allow unchanged without modern tools, got '$actual' for: $1"
+    fail=$((fail + 1))
   fi
 }
 
@@ -135,7 +160,7 @@ check block-env-dump.sh deny 'echo "${GH_TOKEN}"'
 # and clean up via trap so an interrupted run can't leave stale state behind.
 export ANVIL_PROBE_CACHE
 ANVIL_PROBE_CACHE=$(mktemp "${TMPDIR:-/tmp}/anvil-probe-test.XXXXXX")
-trap 'rm -f "$ANVIL_PROBE_CACHE"' EXIT
+trap 'rm -f "$ANVIL_PROBE_CACHE"; rm -rf "$fixtures"' EXIT
 
 # The modern-CLI hook now owns exact `find` and `sed -i` rewrites.
 echo no > "$ANVIL_PROBE_CACHE"
@@ -205,15 +230,22 @@ check gh-json.sh deny 'gh variable list'
 check gh-json.sh deny 'gh secret list'
 check gh-json.sh allow 'gh label list --json name'
 
+# Without the modern tools on PATH, the classic commands run as typed.
+classic 'grep -r foo .'
+classic 'ls -la'
+classic 'find . -name x'
+classic 'sed -i s/a/b/ f'
+
 # Flip the isolated probe cache to 'ok' for the Anvil checks.
 REDIRECT=./redirect-to-anvil.sh
 echo ok > "$ANVIL_PROBE_CACHE"
 
 redirect_decision() { # redirect_decision <expected: allow|deny> <tool_name> <tool_input-json>
+  checks=$((checks + 1))
   actual=$(hook_decision "$REDIRECT" "$(printf '{"tool_name":"%s","tool_input":%s}' "$2" "$3")")
   if [ "$actual" != "$1" ]; then
     echo "FAIL redirect-to-anvil.sh: expected $1, got $actual for: $2 $3"
-    fail=1
+    fail=$((fail + 1))
   fi
 }
 
@@ -240,7 +272,7 @@ redirect_decision allow Bash '{"command":"/usr/bin/sed -i s/a/b/ f.txt"}'
 # HANDOFF_TOKENS is cleared, so the cases use the default threshold, 360000.
 HANDOFF=./context-handoff.sh
 handoff_tmp=$(mktemp -d "${TMPDIR:-/tmp}/handoff-test.XXXXXX")
-trap 'rm -f "$ANVIL_PROBE_CACHE"; rm -r "$handoff_tmp"' EXIT
+trap 'rm -f "$ANVIL_PROBE_CACHE"; rm -r "$handoff_tmp"; rm -rf "$fixtures"' EXIT
 
 rollout() { # rollout <file> <fill>
   printf '%s\n' '{"type":"session_meta","payload":{}}' \
@@ -249,6 +281,7 @@ rollout() { # rollout <file> <fill>
 }
 
 handoff() { # handoff <expected: warn|none> <session> <transcript> [extra json fields]
+  checks=$((checks + 1))
   local out rc=0 want=""
   out=$(printf '{"session_id":"%s","transcript_path":"%s"%s}' "$2" "$3" "${4:-}" |
     TMPDIR=$handoff_tmp "$HANDOFF" 2>/dev/null) || rc=$?
@@ -256,7 +289,7 @@ handoff() { # handoff <expected: warn|none> <session> <transcript> [extra json f
   actual=$(jq -r '.hookSpecificOutput.additionalContext // empty' <<<"$out" 2>/dev/null)
   if [ "$rc" != 0 ] || [ "$actual" != "$want" ]; then
     echo "FAIL context-handoff.sh: expected $1 (exit 0), got exit $rc, '$actual' for session $2"
-    fail=1
+    fail=$((fail + 1))
   fi
 }
 
@@ -274,7 +307,7 @@ FILL=360000 handoff warn s-sub "$handoff_tmp/at"
 # More than 1 MiB of other lines after the last count: the hook reads the whole rollout.
 rollout "$handoff_tmp/gap" 360000
 yes '{"type":"response_item","payload":{"type":"function_call_output"}}' | head -n 20000 >> "$handoff_tmp/gap"
-[ "$(wc -c < "$handoff_tmp/gap")" -gt 1048576 ] || { echo "FAIL context-handoff.sh: the gap fixture is under 1 MiB"; fail=1; }
+checks=$((checks + 1)); [ "$(wc -c < "$handoff_tmp/gap")" -gt 1048576 ] || { echo "FAIL context-handoff.sh: the gap fixture is under 1 MiB"; fail=$((fail + 1)); }
 FILL=360000 handoff warn s-gap "$handoff_tmp/gap"
 # HANDOFF_TOKENS overrides the threshold.
 rollout "$handoff_tmp/low" 5000
@@ -285,5 +318,15 @@ handoff none s-gone "$handoff_tmp/missing"
 handoff none s-empty "$handoff_tmp/empty"
 HANDOFF_TOKENS=abc handoff none s-bad "$handoff_tmp/at"
 
-[ "$fail" = 0 ] && echo "all hook checks passed"
-exit "$fail"
+# format-json.sh must write LF. A native jq.exe on Windows writes CRLF unless lib.sh adds -b.
+printf '{"a":1,"b":[2,3]}\n' > "$fj/x.json"
+printf '{"tool_name":"Write","tool_input":{"file_path":"%s"}}' "$fj/x.json" | ./format-json.sh 2>/dev/null
+checks=$((checks + 1))
+lines=$(wc -l < "$fj/x.json"); crs=$(tr -cd '\r' < "$fj/x.json" | wc -c)
+if [ "$((lines))" -lt 3 ] || [ "$((crs))" -ne 0 ]; then
+  echo "FAIL format-json.sh: expected a formatted file with LF only, got $((lines)) lines and $((crs)) CR"
+  fail=$((fail + 1))
+fi
+
+echo "$((checks - fail)) passed, $fail failed"
+exit $((fail > 0))
