@@ -155,6 +155,16 @@ w check block-git-destructive.sh deny 'GIT reset --hard HEAD'
 w check block-git-destructive.sh deny '& "C:\Program Files\Git\cmd\GIT.EXE" push --force'
 w check block-git-destructive.sh deny "pwsh -Command 'GIT.EXE restore .'"
 w check block-git-destructive.sh allow 'GIT.EXE status -sb'
+# A quoted path with a reference and a space (`$env:ProgramFiles\Sample Tools`) still names the command,
+# and the same command line keeps the references of an output argument for the env check.
+w check block-git-destructive.sh deny '& "$env:ProgramFiles\Sample Tools\cmd\git.exe" reset --hard HEAD'
+w check block-git-destructive.sh deny '& "${env:ProgramFiles}\Sample Tools\GIT.EXE" push --force'
+w check block-git-destructive.sh deny '& "$env:ProgramFiles\Git\cmd\git.exe" reset --hard HEAD'
+w check block-git-destructive.sh deny '& "$env:ProgramFiles\Sample Tools\git.exe" reset --hard; Write-Output "token is $env:PATH"'
+w check block-git-destructive.sh allow '& "$env:ProgramFiles\Sample Tools\cmd\git.exe" status -sb'
+w check block-env-dump.sh deny '& "$env:ProgramFiles\Sample Tools\git.exe" status; Write-Output "token is $env:GH_TOKEN"'
+w check block-env-dump.sh allow '& "$env:ProgramFiles\Sample Tools\git.exe" status; Write-Output "token is $env:PATH"'
+u check block-git-destructive.sh allow '& "$env:ProgramFiles\Sample Tools\cmd\git.exe" reset --hard HEAD'
 
 check block-env-dump.sh deny 'env'
 check block-env-dump.sh deny 'env | rg TOKEN'

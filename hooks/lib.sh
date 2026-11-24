@@ -104,12 +104,13 @@ strip_quotes() {
           rest=${rest#*"${BASH_REMATCH[1]}"}
         done
       fi
-      if [[ -n $refs ]]; then
-        body="$refs "
-      # Windows: a quoted path in command position still names the command:
-      # & "C:\Program Files\Git\cmd\git.exe" reset --hard
-      elif [[ $ON_WINDOWS && ${c%%"$span"*} =~ $cmdpos && ${body##*[/\\]} =~ $plain ]]; then
+      # Windows: a quoted path in command position still names the command, also when the
+      # path holds a reference: & "$env:ProgramFiles\Sample Tools\git.exe" reset --hard
+      # The command name wins over the references; an output argument is not in command position.
+      if [[ $ON_WINDOWS && ${c%%"$span"*} =~ $cmdpos && ${body##*[/\\]} =~ $plain ]]; then
         body=${body##*[/\\]}
+      elif [[ -n $refs ]]; then
+        body="$refs "
       else
         body=" "
       fi
