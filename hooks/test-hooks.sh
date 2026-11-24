@@ -120,6 +120,29 @@ check block-git-destructive.sh deny 'exec git clean -fd'
 check block-git-destructive.sh deny 'env -u GIT_DIR git clean -fd'
 check block-git-destructive.sh allow 'env -u GIT_DIR git status'
 
+# PowerShell (Codex on Windows): `git.exe`, the `&` call operator, Windows paths,
+# and the `pwsh -Command '...'` wrapper that Codex puts around every command.
+check block-git-destructive.sh deny 'git.exe reset --hard'
+check block-git-destructive.sh deny '& git reset --hard'
+check block-git-destructive.sh deny '& git.exe clean -fd'
+check block-git-destructive.sh deny '.\git.exe clean -fd'
+check block-git-destructive.sh deny 'C:\git\cmd\git.exe restore .'
+check block-git-destructive.sh deny "& 'C:\\Program Files\\Git\\cmd\\git.exe' reset --hard"
+check block-git-destructive.sh deny '& "C:\Program Files\Git\cmd\git.exe" push --force'
+check block-git-destructive.sh deny "pwsh -Command 'git reset --hard HEAD'"
+check block-git-destructive.sh deny '"c:\program files\powershell\7\pwsh.exe" -Command '"'git reset --hard HEAD'"
+check block-git-destructive.sh deny 'powershell.exe -NoProfile -Command "git clean -fd"'
+check block-git-destructive.sh deny "pwsh -NoProfile -ExecutionPolicy Bypass -c 'git status; git clean -fd'"
+check block-git-destructive.sh deny 'PWSH.EXE -command git reset --hard'
+check block-git-destructive.sh deny "pwsh -Command 'Write-Host ''ok''; git restore .'"
+check block-git-destructive.sh allow 'git.exe status -sb'
+check block-git-destructive.sh allow '& git status'
+check block-git-destructive.sh allow "& 'C:\\Program Files\\Git\\cmd\\git.exe' status"
+check block-git-destructive.sh allow "pwsh -Command 'git status -sb'"
+check block-git-destructive.sh allow "pwsh -Command 'Write-Host ''git reset --hard'''"
+check block-git-destructive.sh allow "pwsh -Command 'Get-ChildItem C:\\Users'"
+check block-git-destructive.sh allow 'pwsh -File .\deploy.ps1'
+
 check block-env-dump.sh deny 'env'
 check block-env-dump.sh deny 'env | rg TOKEN'
 check block-env-dump.sh deny 'export -p'
@@ -154,6 +177,44 @@ check block-env-dump.sh allow 'set -x'
 # A secret print inside shell control flow.
 check block-env-dump.sh deny 'if echo $GITHUB_TOKEN; then :; fi'
 check block-env-dump.sh deny 'echo "${GH_TOKEN}"'
+
+# PowerShell: the environment is the `env:` drive and [Environment].
+check block-env-dump.sh deny 'Get-ChildItem env:'
+check block-env-dump.sh deny 'Get-ChildItem Env:\'
+check block-env-dump.sh deny "Get-ChildItem 'Env:\\'"
+check block-env-dump.sh deny 'GCI ENV:'
+check block-env-dump.sh deny 'gci -Path env:'
+check block-env-dump.sh deny 'ls env:'
+check block-env-dump.sh deny 'dir env:'
+check block-env-dump.sh deny 'Get-Item env:*'
+check block-env-dump.sh deny 'gi env:*'
+check block-env-dump.sh deny 'gci env:*TOKEN*'
+check block-env-dump.sh deny "Get-ChildItem env: | Where-Object Name -like '*TOKEN*'"
+check block-env-dump.sh deny '[Environment]::GetEnvironmentVariables()'
+check block-env-dump.sh deny "[System.Environment]::GetEnvironmentVariables('Process')"
+check block-env-dump.sh deny '$e = [Environment]::GetEnvironmentVariables(); $e.Keys'
+check block-env-dump.sh deny "pwsh -Command 'Get-ChildItem env:'"
+check block-env-dump.sh deny "pwsh -Command '[Environment]::GetEnvironmentVariables()'"
+check block-env-dump.sh deny 'echo $env:GITHUB_TOKEN'
+check block-env-dump.sh deny 'Write-Host $env:GITHUB_TOKEN'
+check block-env-dump.sh deny 'write-output ${env:ANTHROPIC_API_KEY}'
+check block-env-dump.sh deny 'Write-Host "$env:MY_SECRET"'
+check block-env-dump.sh deny '$env:GITHUB_TOKEN'
+check block-env-dump.sh deny '$ENV:github_token'
+check block-env-dump.sh deny 'Write-Host hi; $env:GH_TOKEN'
+# A named lookup, a plain variable, and ordinary commands stay allowed.
+check block-env-dump.sh allow '$env:PATH'
+check block-env-dump.sh allow 'echo $env:PATH'
+check block-env-dump.sh allow 'Write-Host $env:USERPROFILE'
+check block-env-dump.sh allow 'Get-Item env:PATH'
+check block-env-dump.sh allow 'Get-ChildItem env:GITHUB_TOKEN'
+check block-env-dump.sh allow 'Get-ChildItem C:\Users'
+check block-env-dump.sh allow 'Get-ChildItem'
+check block-env-dump.sh allow "[Environment]::GetEnvironmentVariable('PATH')"
+check block-env-dump.sh allow 'Get-Process | Select-Object -First 3'
+check block-env-dump.sh allow 'Invoke-RestMethod -Headers @{ Authorization = "Bearer $env:GITHUB_TOKEN" } https://example.com'
+check block-env-dump.sh allow "pwsh -Command 'Get-Date'"
+check block-env-dump.sh allow "pwsh -Command 'Write-Host \$env:PATH'"
 
 # Isolate the Anvil probe cache from the real one (/tmp/.anvil-probe-$UID) so
 # these checks never race a live Claude Code session's redirect decisions,
@@ -204,6 +265,10 @@ decision deny  'while ls; do :; done'
 decision deny  '! grep foo f'
 decision deny  'if FOO=1 /bin/ls; then :; fi'
 decision allow 'if rg foo; then echo x; fi'
+# The pwsh wrapper and `.exe` do not hide the command word.
+decision deny  "pwsh -Command 'grep -r foo .'"
+decision deny  '& grep.exe foo f'
+decision allow "pwsh -Command 'rg foo'"
 
 check gh-json.sh deny 'gh pr view 12'
 check gh-json.sh deny 'gh -R o/r issue list'
@@ -229,6 +294,10 @@ check gh-json.sh deny 'gh label list'
 check gh-json.sh deny 'gh variable list'
 check gh-json.sh deny 'gh secret list'
 check gh-json.sh allow 'gh label list --json name'
+# PowerShell: `gh.exe` and the pwsh wrapper.
+check gh-json.sh deny 'gh.exe pr view 12'
+check gh-json.sh deny "pwsh -Command 'gh pr view 12'"
+check gh-json.sh allow "pwsh -Command 'gh pr view 12 --json title'"
 
 # Without the modern tools on PATH, the classic commands run as typed.
 classic 'grep -r foo .'
@@ -264,6 +333,10 @@ redirect_decision allow Read '{"file_path":"./x.md"}'
 redirect_decision allow Bash '{"command":"echo ok; sed -i s/a/b/ f.txt"}'
 redirect_decision allow Bash '{"command":"FOO=1 sed -i s/a/b/ f.txt"}'
 redirect_decision allow Bash '{"command":"/usr/bin/sed -i s/a/b/ f.txt"}'
+# PowerShell: `git.exe` and the pwsh wrapper reach the same redirect.
+redirect_decision deny  Bash '{"command":"git.exe status"}'
+redirect_decision deny  Bash '{"command":"pwsh -Command '"'git status'"'"}'
+redirect_decision allow Bash '{"command":"pwsh -Command '"'git commit -m x'"'"}'
 
 # context-handoff.sh reads the fill from a rollout. A fake rollout has a running
 # total far above the fill and a trailing token_count with no info, so a wrong
