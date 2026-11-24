@@ -142,6 +142,13 @@ check block-git-destructive.sh allow "pwsh -Command 'git status -sb'"
 check block-git-destructive.sh allow "pwsh -Command 'Write-Host ''git reset --hard'''"
 check block-git-destructive.sh allow "pwsh -Command 'Get-ChildItem C:\\Users'"
 check block-git-destructive.sh allow 'pwsh -File .\deploy.ps1'
+# Windows ignores case in a command name: `GIT.EXE` is `git`.
+check block-git-destructive.sh deny 'GIT.EXE reset --hard'
+check block-git-destructive.sh deny 'Git.exe clean -fd'
+check block-git-destructive.sh deny 'GIT reset --hard HEAD'
+check block-git-destructive.sh deny '& "C:\Program Files\Git\cmd\GIT.EXE" push --force'
+check block-git-destructive.sh deny "pwsh -Command 'GIT.EXE restore .'"
+check block-git-destructive.sh allow 'GIT.EXE status -sb'
 
 check block-env-dump.sh deny 'env'
 check block-env-dump.sh deny 'env | rg TOKEN'
@@ -215,6 +222,8 @@ check block-env-dump.sh allow 'Get-Process | Select-Object -First 3'
 check block-env-dump.sh allow 'Invoke-RestMethod -Headers @{ Authorization = "Bearer $env:GITHUB_TOKEN" } https://example.com'
 check block-env-dump.sh allow "pwsh -Command 'Get-Date'"
 check block-env-dump.sh allow "pwsh -Command 'Write-Host \$env:PATH'"
+check block-env-dump.sh deny 'PRINTENV.EXE'
+check block-env-dump.sh deny 'GET-CHILDITEM ENV:'
 
 # Isolate the Anvil probe cache from the real one (/tmp/.anvil-probe-$UID) so
 # these checks never race a live Claude Code session's redirect decisions,
@@ -269,6 +278,7 @@ decision allow 'if rg foo; then echo x; fi'
 decision deny  "pwsh -Command 'grep -r foo .'"
 decision deny  '& grep.exe foo f'
 decision allow "pwsh -Command 'rg foo'"
+decision deny  'GREP.EXE -r foo .'
 
 check gh-json.sh deny 'gh pr view 12'
 check gh-json.sh deny 'gh -R o/r issue list'
@@ -298,6 +308,7 @@ check gh-json.sh allow 'gh label list --json name'
 check gh-json.sh deny 'gh.exe pr view 12'
 check gh-json.sh deny "pwsh -Command 'gh pr view 12'"
 check gh-json.sh allow "pwsh -Command 'gh pr view 12 --json title'"
+check gh-json.sh deny 'GH.EXE pr view 12'
 
 # Without the modern tools on PATH, the classic commands run as typed.
 classic 'grep -r foo .'

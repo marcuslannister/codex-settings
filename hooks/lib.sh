@@ -115,11 +115,13 @@ normalize_segment() {
     [[ -n $t && $t != -* ]] && s=$t
   fi
   # `read` trims both ends and splits off the first word. The word loses its
-  # directory (either slash) and a Windows `.exe` suffix: `git.exe` is `git`.
+  # directory (either slash) and a Windows `.exe` suffix, and its case: `GIT.EXE` is `git`.
   # A leading `& ` (PowerShell call operator) is already a separator in read_command.
+  # Windows ignores case in a command name; a word with no capital skips the `tr` fork.
   read -r first rest <<<"$s"
   first=${first##*[/\\]}
-  [[ $first == *.[eE][xX][eE] ]] && first=${first%.*}
+  [[ $first == *[[:upper:]]* ]] && first=$(printf '%s' "$first" | tr '[:upper:]' '[:lower:]')
+  [[ $first == *.exe ]] && first=${first%.exe}
   printf '%s' "$first${rest:+ $rest}"
 }
 
