@@ -1,0 +1,41 @@
+# Hook self-check on the three systems the hooks run on. On Windows the job uses
+# Git Bash with a native jq.exe, where the CRLF and MSYS path bugs show up.
+name: Hooks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-hooks:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # Before checkout: a CRLF checkout breaks the shell scripts on Windows.
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      # jq is the only tool the tests need.
+      - name: Install jq
+        run: |
+          case "$RUNNER_OS" in
+            macOS) brew install jq ;;
+            Linux) sudo apt-get update && sudo apt-get install -y jq ;;
+            Windows) choco install jq --no-progress -y ;;
+          esac
+      - name: Show versions
+        run: |
+          bash --version | head -n 1
+          jq --version
+      - run: bash hooks/test-hooks.sh

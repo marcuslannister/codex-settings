@@ -13,6 +13,7 @@
 set -euo pipefail
 trap 'exit 0' ERR
 exec 2>/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" # jq -b on Windows: `read -r` keeps no \r
 
 HANDOFF_TOKENS="${HANDOFF_TOKENS:-360000}"
 [ "${HERDR_ENV:-}" = "1" ] || exit 0

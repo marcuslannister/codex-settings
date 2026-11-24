@@ -7,6 +7,10 @@
 # The pipeline is: unwrap nested shells -> remove remaining quoted spans ->
 # split on the shell operators -> normalise each segment.
 
+# Windows: a native jq.exe writes CRLF for every newline, which breaks line
+# parsing (a heredoc end marker becomes `EOF\r`). -b keeps LF.
+case $OSTYPE in msys* | cygwin*) jq() { command jq -b "$@"; } ;; esac
+
 # A successful hook with no output leaves the tool allowed by default.
 guard_allow() { exit 0; }
 
@@ -99,7 +103,9 @@ anvil_available() {
   local cache="${ANVIL_PROBE_CACHE:-/tmp/.anvil-probe-${UID:-$(id -u)}}"
   if [[ -f $cache ]]; then
     local mtime now
-    mtime=$(/usr/bin/stat -f %m "$cache" 2>/dev/null || /usr/bin/stat -c %Y "$cache" 2>/dev/null || echo 0)
+    # GNU first: GNU `stat -f` prints file system data and exits 1, not an mtime.
+    mtime=$(/usr/bin/stat -c %Y "$cache" 2>/dev/null || /usr/bin/stat -f %m "$cache" 2>/dev/null || echo 0)
+    [[ $mtime =~ ^[0-9]+$ ]] || mtime=0
     now=$(date +%s)
     if (( now - mtime < 60 )); then
       [[ $(cat "$cache") == ok ]]

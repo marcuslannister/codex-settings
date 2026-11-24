@@ -3,6 +3,7 @@
 # - No-op on non-*.json paths and on *.jsonl / *.ndjson
 # - Leaves invalid JSON untouched and surfaces a stderr note (don't damage broken files)
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" # jq -b on Windows: the file keeps LF
 
 input="$(cat)"
 tool="$(jq -r '.tool_name // empty' <<<"$input")"
