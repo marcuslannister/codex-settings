@@ -9,7 +9,14 @@
 
 # Windows: a native jq.exe writes CRLF for every newline, which breaks line
 # parsing (a heredoc end marker becomes `EOF\r`). -b keeps LF.
-case $OSTYPE in msys* | cygwin*) jq() { command jq -b "$@"; } ;; esac
+# ON_WINDOWS also gates the PowerShell rules (the pwsh unwrap, case folding of the
+# command word, `\` paths, `$env:` and `env:`), because Codex on Windows runs
+# PowerShell. On macOS and Linux the same text is Bash: a function `ENV`, a file
+# `env:`, a `\`-escaped literal. There the hooks decide as they did before.
+case $OSTYPE in
+  msys* | cygwin*) ON_WINDOWS=1; jq() { command jq -b "$@"; } ;;
+  *) ON_WINDOWS= ;;
+esac
 
 # A successful hook with no output leaves the tool allowed by default.
 guard_allow() { exit 0; }
@@ -39,15 +46,38 @@ guard_rewrite() {
 # Replaces the quoted payload of `bash -c '...'` with a separate segment, so the
 # payload is inspected as commands instead of being discarded as a string.
 # Handles a leading path (/bin/sh) and any flag cluster (-lc, -e -u -c).
+# On Windows only, it also unwraps `pwsh -Command '...'` and `powershell` in command
+# position. Codex sends a hook the inner command (recorded on nuc), so this is
+# defensive: it applies when a command itself starts `pwsh -Command ...`. It accepts
+# any path (quoted or not), `.exe`, any case, options before -Command, and a
+# single-quoted ('' is one '), double-quoted, or bare payload.
+# shortcut: a payload with \" inside a "..." wrapper, and -EncodedCommand, are not decoded.
 # Each pass removes one quote pair, so the loop always ends.
 unwrap_shell() {
-  local c=$1 sq="'" quoted payload
+  local c=$1 sq="'" quoted payload ncm two="''"
   local re='(^|[[:space:]])([^[:space:]]*/)?((ba|z|k|da)?sh)(([[:space:]]+-[A-Za-z]+)*)[[:space:]]+("[^"]*"|'"$sq"'[^'"$sq"']*'"$sq"')'
-  while [[ $c =~ $re ]]; do
-    quoted=${BASH_REMATCH[7]}
-    payload=${quoted:1:${#quoted}-2}
-    c=${c/"$quoted"/"; $payload ;"}
+  local ps='(^|[;&|(`]|'$'\n'')[[:space:]]*("[^"]*[/\\]|"|[^[:space:]"'"$sq"';&|()]*[/\\])?(pwsh|powershell)(\.exe)?"?[[:space:]]+([^"'"$sq"';&|()]*[[:space:]])?-c[a-z]*[[:space:]]+'
+  ps+='("([^"]*)"|'"$sq"'(([^'"$sq"']|'"$sq$sq"')*)'"$sq"'|[^[:space:]"'"$sq"';&|][^;&|]*)'
+  shopt -q nocasematch && ncm=-s || ncm=-u
+  [[ $ON_WINDOWS ]] && shopt -s nocasematch # pwsh, PowerShell, and -Command are case-insensitive
+  while :; do
+    if [[ $c =~ $re ]]; then
+      quoted=${BASH_REMATCH[7]}
+      payload=${quoted:1:${#quoted}-2}
+      c=${c/"$quoted"/"; $payload ;"}
+    elif [[ $ON_WINDOWS && $c =~ $ps ]]; then
+      quoted=${BASH_REMATCH[0]}
+      case ${BASH_REMATCH[6]:0:1} in
+        '"') payload=${BASH_REMATCH[7]} ;;
+        "$sq") payload=${BASH_REMATCH[8]//"$two"/"$sq"} ;;
+        *) payload=${BASH_REMATCH[6]} ;;
+      esac
+      c=${c/"$quoted"/"${BASH_REMATCH[1]}; $payload ;"}
+    else
+      break
+    fi
   done
+  shopt $ncm nocasematch
   printf '%s' "$c"
 }
 
@@ -56,11 +86,35 @@ unwrap_shell() {
 # is data and goes away, so rg -i "cli|env|gh" cannot read as a bare `env`.
 # Runs after unwrap_shell, so a real nested command has already been taken out.
 strip_quotes() {
-  local c=$1 sq="'" span body
+  local c=$1 sq="'" span body refs rest plain='^[A-Za-z0-9_.:/=@$%{}+-]+$' cmdpos='(^|[;&|(`]|'$'\n'')[[:space:]]*$'
+  # Windows: `\` joins a path, and a quoted wildcard names files (`gci "env:*"`).
+  [[ $ON_WINDOWS ]] && plain='^[A-Za-z0-9_.:/\\=@$%{}+*?-]+$'
   while [[ $c =~ (\"[^\"]*\"|$sq[^$sq]*$sq) ]]; do
     span=${BASH_REMATCH[1]}
     body=${span:1:${#span}-2}
-    [[ $body =~ ^[A-Za-z0-9_.:/=@$%{}+-]+$ ]] || body=" "
+    # Windows: single quotes do not expand, so `'$env:TOKEN'` is text, not a variable.
+    [[ $ON_WINDOWS && $span == "$sq"* ]] && body=${body//\$/_}
+    if [[ ! $body =~ $plain ]]; then
+      refs="" rest=$body
+      # Windows: double quotes expand `$env:NAME`. Keep each reference as a word of its
+      # own, so the secret check sees `Write-Output "token is $env:GH_TOKEN"`.
+      if [[ $ON_WINDOWS && $span == '"'* ]]; then
+        while [[ $rest =~ (\$\{?[Ee][Nn][Vv]:[A-Za-z_][A-Za-z0-9_]*\}?) ]]; do
+          refs+=" ${BASH_REMATCH[1]}"
+          rest=${rest#*"${BASH_REMATCH[1]}"}
+        done
+      fi
+      # Windows: a quoted path in command position still names the command, also when the
+      # path holds a reference: & "$env:ProgramFiles\Sample Tools\git.exe" reset --hard
+      # The command name wins over the references; an output argument is not in command position.
+      if [[ $ON_WINDOWS && ${c%%"$span"*} =~ $cmdpos && ${body##*[/\\]} =~ $plain ]]; then
+        body=${body##*[/\\]}
+      elif [[ -n $refs ]]; then
+        body="$refs "
+      else
+        body=" "
+      fi
+    fi
     c=${c/"$span"/"$body"}
   done
   printf '%s' "$c"
@@ -89,9 +143,20 @@ normalize_segment() {
     done
     [[ -n $t && $t != -* ]] && s=$t
   fi
-  # `read` trims both ends and splits off the first word.
+  # `read` trims both ends and splits off the first word. The word loses its directory.
+  # On Windows it also loses a `\` directory and a `.exe` suffix, and its case, because
+  # Windows ignores case in a command name: `GIT.EXE` is `git`. (A word with no capital
+  # skips the `tr` fork.) On Unix a name keeps its case: `ENV` is not `env`.
+  # A leading `& ` (PowerShell call operator) is already a separator in read_command.
   read -r first rest <<<"$s"
-  printf '%s' "${first##*/}${rest:+ $rest}"
+  if [[ $ON_WINDOWS ]]; then
+    first=${first##*[/\\]}
+    [[ $first == *[[:upper:]]* ]] && first=$(printf '%s' "$first" | tr '[:upper:]' '[:lower:]')
+    [[ $first == *.exe ]] && first=${first%.exe}
+  else
+    first=${first##*/}
+  fi
+  printf '%s' "$first${rest:+ $rest}"
 }
 
 # Cached Anvil probe (60s TTL) — avoids spawning emacsclient on every hook fire.
