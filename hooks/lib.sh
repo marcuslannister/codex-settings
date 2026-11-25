@@ -185,65 +185,93 @@ anvil_available() {
   echo no > "$cache"; return 1
 }
 
+# True when the command runs a shell or a script, so a heredoc body may run as commands: a shell
+# word (`sh`, `bash`, `ssh`, `su`, `source`, `eval`), `sudo -i` or `sudo -s`, a `.` command word, or
+# `./file` and `/path/file.sh` in command position. Any letter case. The text is the command without
+# its heredoc bodies, so a word inside a body does not count. A false yes only keeps a body checked.
+runs_script() {
+  local t=$1 ncm rc=1 cmd=$'(^|[;&|(`]|\n)[[:space:]]*'
+  local shell='(^|[^[:alnum:]_.-])(ssh|(ba|z|k|da|c|tc)?sh|fish|su|source|eval)([^[:alnum:]_-]|$)'
+  local sudo='(^|[^[:alnum:]_.-])sudo[[:space:]]([^;&|]*[[:space:]])?-[A-Za-z]*[is]([[:space:]]|$)'
+  local dot=$cmd'\.[[:space:]]'
+  local script=$cmd'(\./[^[:space:];&|()<>]+|[~/][^[:space:];&|()<>]*\.sh)([[:space:]]|[;&|()]|$)'
+  shopt -q nocasematch && ncm=-s || ncm=-u
+  shopt -s nocasematch
+  if [[ $t =~ $shell || $t =~ $sudo || $t =~ $dot || $t =~ $script ]]; then rc=0; fi
+  shopt $ncm nocasematch
+  return $rc
+}
+
 # Removes the body and end word of each heredoc: its lines are data, not commands. The
 # line that opens it stays. A body stays when its lines can still run or print:
-#   - a shell reads it (`sh`, `bash`, `ssh`, `source`, or `eval` on the opening line);
+#   - the command runs a shell or a script anywhere (see runs_script): then every body stays;
 #   - it is unquoted (`<<EOF`) and expands, so a line with `$` or a backtick stays.
-# QUIET is an optional ERE. An opening line that matches it writes to a file, so an
-# unquoted body prints nothing there and its expansion lines go too.
-# The scan skips quoted text, comments, and `<<<`. Like bash, it treats a heredoc with
-# no end word as running to the end of the command.
+# QUIET is an optional ERE. An opening line that matches it writes to a file, so its body is
+# dropped whatever runs later (block-secret-file-read: a body that is written prints nothing).
+# A `\` that ends a line joins the next line first, as bash does, so the opening line is whole.
+# The end word is the word without its quotes (`E"O"F` ends at `EOF`). The scan skips quoted text,
+# comments, and `<<<`. Like bash, it treats a heredoc with no end word as running to the end.
 # shortcut: a heredoc inside `bash -c '...'` keeps its body (it may still block), and
 # `$((a<<b))` with a letter operand reads as a heredoc; upgrade by calling this again
 # after unwrap_shell, and by tracking `$((`.
 strip_heredocs() {
-  local c=$1 quiet=${2:-} q="" pend="" out="" line t rec mode end quoted i ch rest
-  local open=$'^<<(-?)[[:space:]]*([\'"\\\\]?)([A-Za-z_][^[:space:];&|()<>\'"\\\\`$]*)'
-  local shell='(^|[^[:alnum:]_.-])(ssh|(ba|z|k|da)?sh|source|eval)([^[:alnum:]_-]|$)'
+  local c=$1 quiet=${2:-} keepall=0 sq="'" pass q pend out outside line nxt t rec mode end w i ch rest
+  local open=$'^<<(-?)[[:space:]]*(([A-Za-z_]|\'[^\']*\'|"[^"]*"|\\\\.)([^[:space:];&|()<>\'"\\\\`$]|\'[^\']*\'|"[^"]*"|\\\\.)*)'
   [[ $c == *'<<'* ]] || { printf '%s' "$c"; return; }
-  while IFS= read -r line || [[ -n $line ]]; do
-    if [[ -n $pend ]]; then
-      rec=${pend%%$'\n'*} mode=${rec%%:*} end=${rec#*:}
-      t=${line%$'\r'} # a CRLF command ends the heredoc at `EOF\r`
-      t=${t#"${t%%[![:space:]]*}"} # `<<-` strips tabs; stripping any blank only errs toward checking more
-      [[ $t == "$end" ]] && pend=${pend#*$'\n'}
-      if [[ $mode == keep || ( $mode == expand && ( $line == *'$'* || $line == *'`'* ) ) ]]; then
-        out+=$line$'\n'
-      fi
-      continue
-    fi
-    out+=$line$'\n'
-    for ((i = 0; i < ${#line}; i++)); do
-      ch=${line:i:1}
-      if [[ $q == "'" ]]; then
-        [[ $ch == "'" ]] && q=
-      elif [[ $ch == '\' ]]; then
-        i=$((i + 1))
-      elif [[ -n $q ]]; then
-        [[ $ch == '"' ]] && q=
-      elif [[ $ch == "'" || $ch == '"' ]]; then
-        q=$ch
-      elif [[ $ch == '#' ]] && { ((i == 0)) || [[ ${line:i-1:1} == [[:space:]] ]]; }; then
-        break
-      elif [[ $ch == '<' ]]; then
-        rest=${line:i}
-        if [[ $rest == '<<<'* ]]; then
-          i=$((i + 2))
-        elif [[ $rest =~ $open ]]; then
-          quoted=${BASH_REMATCH[2]} end=${BASH_REMATCH[3]}
-          i=$((i + ${#BASH_REMATCH[0]} - 1))
-          [[ $quoted == "'" || $quoted == '"' ]] && [[ ${line:i+1:1} == "$quoted" ]] && i=$((i + 1))
-          mode=expand
-          [[ -n $quoted ]] && mode=drop
-          [[ $mode == expand && -n $quiet && $line =~ $quiet ]] && mode=drop
-          [[ $line =~ $shell ]] && mode=keep
-          pend+=$mode:$end$'\n'
-        elif [[ $rest == '<<'* ]]; then
-          i=$((i + 1))
+  for pass in 1 2; do
+    q="" pend="" out="" outside=""
+    while IFS= read -r line || [[ -n $line ]]; do
+      if [[ -n $pend ]]; then
+        rec=${pend%%$'\n'*} mode=${rec%%:*} end=${rec#*:}
+        t=${line%$'\r'} # a CRLF command ends the heredoc at `EOF\r`
+        t=${t#"${t%%[![:space:]]*}"} # `<<-` strips tabs; stripping any blank only errs toward checking more
+        [[ $t == "$end" ]] && pend=${pend#*$'\n'}
+        if { ((keepall)) && [[ $mode != quiet ]]; } || [[ $mode == expand && ( $line == *'$'* || $line == *'`'* ) ]]; then
+          out+=$line$'\n'
         fi
+        continue
       fi
-    done
-  done <<<"$c"
+      for ((i = 0; i < ${#line}; i++)); do
+        ch=${line:i:1}
+        if [[ $q == "'" ]]; then
+          [[ $ch == "'" ]] && q=
+        elif [[ $ch == '\' ]]; then
+          if ((i == ${#line} - 1)) && { IFS= read -r nxt || [[ -n $nxt ]]; }; then
+            line=${line:0:i}$nxt
+            i=$((i - 1))
+          else
+            i=$((i + 1))
+          fi
+        elif [[ -n $q ]]; then
+          [[ $ch == '"' ]] && q=
+        elif [[ $ch == "'" || $ch == '"' ]]; then
+          q=$ch
+        elif [[ $ch == '#' ]] && { ((i == 0)) || [[ ${line:i-1:1} == [[:space:]] ]]; }; then
+          break
+        elif [[ $ch == '<' ]]; then
+          rest=${line:i}
+          if [[ $rest == '<<<'* ]]; then
+            i=$((i + 2))
+          elif [[ $rest =~ $open ]]; then
+            w=${BASH_REMATCH[2]}
+            i=$((i + ${#BASH_REMATCH[0]} - 1))
+            end=${w//$sq/}
+            end=${end//\"/}
+            end=${end//\\/}
+            mode=expand
+            [[ $w != "$end" ]] && mode=drop
+            [[ -n $quiet && $line =~ $quiet ]] && mode=quiet
+            pend+=$mode:$end$'\n'
+          elif [[ $rest == '<<'* ]]; then
+            i=$((i + 1))
+          fi
+        fi
+      done
+      out+=$line$'\n'
+      outside+=$line$'\n'
+    done <<<"$c"
+    if ((pass == 1)) && runs_script "$outside"; then keepall=1; else break; fi
+  done
   printf '%s' "${out%$'\n'}"
 }
 

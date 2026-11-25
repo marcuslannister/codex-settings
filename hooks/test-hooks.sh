@@ -461,6 +461,44 @@ check block-git-destructive.sh deny $'git commit -m "title\n\nmention <<EOF here
 check block-git-destructive.sh deny $'echo $((1<<3))\ngit reset --hard'
 check block-git-destructive.sh deny $'# use <<EOF here\ngit reset --hard'
 check block-git-destructive.sh deny $'echo hi # <<EOF\ngit reset --hard'
+# `\` and a newline join the lines first: the shell word may sit on a continuation line.
+check block-git-destructive.sh deny $'ssh -o X=1 \\\n  h <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'cat <<\'EOF\' \\\n  | ssh h bash -s\ngit reset --hard\nEOF'
+check block-env-dump.sh allow $'cat >> notes \\\n  <<\'EOF\'\nset\nenv\nEOF'
+check block-env-dump.sh deny $'cat >> notes \\\n  <<\'EOF\'\nset\nEOF\nenv'
+check block-git-destructive.sh deny $'git push \\\n  --force <<\'EOF\'\nx\nEOF'
+# Write, then run: a body that a later `bash`, `sh`, `.`, `source`, or `./file` runs is a script.
+check block-git-destructive.sh deny $'cat > /tmp/fix.sh <<\'EOF\'\ngit reset --hard origin/main\nEOF\nbash /tmp/fix.sh'
+check block-git-destructive.sh deny $'cat > fix.sh <<\'EOF\' && chmod +x fix.sh && ./fix.sh\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'cat > /tmp/fix.sh <<\'EOF\'\ngit reset --hard\nEOF\n/tmp/fix.sh'
+check block-env-dump.sh deny $'cat > x <<\'EOF\'\nenv\nEOF\nsh x'
+check block-env-dump.sh deny $'cat > x <<\'EOF\'\nenv\nEOF\n. ./x'
+check block-env-dump.sh deny $'cat > x <<\'EOF\'\nenv\nEOF\nsource x'
+# A word in the body, a `.` argument, or a file name that nothing runs is not a run.
+check block-env-dump.sh allow $'cat >> notes <<\'EOF\'\nrun bash hooks/test-hooks.sh\nset\nenv\nEOF'
+check block-env-dump.sh allow $'git add . && cat >> notes <<\'EOF\'\nset\nenv\nEOF'
+check block-env-dump.sh allow $'cat > ./fix.sh <<\'EOF\'\nset\nenv\nEOF'
+check block-env-dump.sh allow $'cd /tmp && git commit -F - <<\'EOF\'\nenv\nEOF'
+# More shells read their stdin: su, sudo -i, sudo -s, a dot command, and any letter case.
+check block-git-destructive.sh deny $'su root <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'sudo -i <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'sudo -s <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'. /dev/stdin <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'SSH h <<\'EOF\'\ngit reset --hard\nEOF'
+check block-env-dump.sh deny $'BASH <<EOF\nenv\nEOF'
+check block-env-dump.sh allow $'sudo -u root tee -a f <<\'EOF\'\nset\nenv\nEOF'
+# These already held: a shell after sudo or env, `bash -s`, and a pipe into `sudo bash`.
+check block-git-destructive.sh deny $'sudo bash <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'env bash <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'bash -s <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'cat <<\'EOF\' | sudo bash\ngit reset --hard\nEOF'
+# An end word with quotes inside is the word without them: `E"O"F` ends at `EOF`.
+check block-git-destructive.sh deny $'cat <<E"O"F\nx\nEOF\ngit reset --hard'
+check block-git-destructive.sh deny $'cat <<\'E\'OF\nx\nEOF\ngit reset --hard'
+check block-env-dump.sh allow $'cat <<E"O"F\nset\nenv\nEOF'
+check block-env-dump.sh allow $'cat <<E"O"F\necho $GITHUB_TOKEN\nEOF'
+# Windows: Git Bash runs `BASH.EXE`, in any case.
+w check block-git-destructive.sh deny $'BASH.EXE -s <<\'EOF\'\ngit reset --hard\nEOF'
 # The same on Windows, where Git Bash runs the hook.
 w check block-env-dump.sh allow $'cat >> /tmp/x.md <<\'EOF\'\nset\nenv\nEOF'
 w check block-git-destructive.sh deny $'cat >> /tmp/x.md <<\'EOF\'\nset\nEOF\ngit reset --hard'
