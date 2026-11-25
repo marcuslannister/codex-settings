@@ -4,8 +4,8 @@
 # read_command sets SEGMENTS and SEGMENT_SEPARATORS. Each normalised segment
 # starts at its command word. Its matching separator is the operator before it.
 #
-# The pipeline is: unwrap nested shells -> remove remaining quoted spans ->
-# split on the shell operators -> normalise each segment.
+# The pipeline is: drop heredoc bodies -> unwrap nested shells -> remove remaining
+# quoted spans -> split on the shell operators -> normalise each segment.
 
 # Windows: a native jq.exe writes CRLF for every newline, which breaks line
 # parsing (a heredoc end marker becomes `EOF\r`). -b keeps LF.
@@ -185,9 +185,71 @@ anvil_available() {
   echo no > "$cache"; return 1
 }
 
+# Removes the body and end word of each heredoc: its lines are data, not commands. The
+# line that opens it stays. A body stays when its lines can still run or print:
+#   - a shell reads it (`sh`, `bash`, `ssh`, `source`, or `eval` on the opening line);
+#   - it is unquoted (`<<EOF`) and expands, so a line with `$` or a backtick stays.
+# QUIET is an optional ERE. An opening line that matches it writes to a file, so an
+# unquoted body prints nothing there and its expansion lines go too.
+# The scan skips quoted text, comments, and `<<<`. Like bash, it treats a heredoc with
+# no end word as running to the end of the command.
+# shortcut: a heredoc inside `bash -c '...'` keeps its body (it may still block), and
+# `$((a<<b))` with a letter operand reads as a heredoc; upgrade by calling this again
+# after unwrap_shell, and by tracking `$((`.
+strip_heredocs() {
+  local c=$1 quiet=${2:-} q="" pend="" out="" line t rec mode end quoted i ch rest
+  local open=$'^<<(-?)[[:space:]]*([\'"\\\\]?)([A-Za-z_][^[:space:];&|()<>\'"\\\\`$]*)'
+  local shell='(^|[^[:alnum:]_.-])(ssh|(ba|z|k|da)?sh|source|eval)([^[:alnum:]_-]|$)'
+  [[ $c == *'<<'* ]] || { printf '%s' "$c"; return; }
+  while IFS= read -r line || [[ -n $line ]]; do
+    if [[ -n $pend ]]; then
+      rec=${pend%%$'\n'*} mode=${rec%%:*} end=${rec#*:}
+      t=${line%$'\r'} # a CRLF command ends the heredoc at `EOF\r`
+      t=${t#"${t%%[![:space:]]*}"} # `<<-` strips tabs; stripping any blank only errs toward checking more
+      [[ $t == "$end" ]] && pend=${pend#*$'\n'}
+      if [[ $mode == keep || ( $mode == expand && ( $line == *'$'* || $line == *'`'* ) ) ]]; then
+        out+=$line$'\n'
+      fi
+      continue
+    fi
+    out+=$line$'\n'
+    for ((i = 0; i < ${#line}; i++)); do
+      ch=${line:i:1}
+      if [[ $q == "'" ]]; then
+        [[ $ch == "'" ]] && q=
+      elif [[ $ch == '\' ]]; then
+        i=$((i + 1))
+      elif [[ -n $q ]]; then
+        [[ $ch == '"' ]] && q=
+      elif [[ $ch == "'" || $ch == '"' ]]; then
+        q=$ch
+      elif [[ $ch == '#' ]] && { ((i == 0)) || [[ ${line:i-1:1} == [[:space:]] ]]; }; then
+        break
+      elif [[ $ch == '<' ]]; then
+        rest=${line:i}
+        if [[ $rest == '<<<'* ]]; then
+          i=$((i + 2))
+        elif [[ $rest =~ $open ]]; then
+          quoted=${BASH_REMATCH[2]} end=${BASH_REMATCH[3]}
+          i=$((i + ${#BASH_REMATCH[0]} - 1))
+          [[ $quoted == "'" || $quoted == '"' ]] && [[ ${line:i+1:1} == "$quoted" ]] && i=$((i + 1))
+          mode=expand
+          [[ -n $quoted ]] && mode=drop
+          [[ $mode == expand && -n $quiet && $line =~ $quiet ]] && mode=drop
+          [[ $line =~ $shell ]] && mode=keep
+          pend+=$mode:$end$'\n'
+        elif [[ $rest == '<<'* ]]; then
+          i=$((i + 1))
+        fi
+      fi
+    done
+  done <<<"$c"
+  printf '%s' "${out%$'\n'}"
+}
+
 read_command() {
   local c seg="" separator="" operator char next i
-  c=$(strip_quotes "$(unwrap_shell "$(jq -r '.tool_input.command // empty' <<<"$1")")")
+  c=$(strip_quotes "$(unwrap_shell "$(strip_heredocs "$(jq -r '.tool_input.command // empty' <<<"$1")")")")
   SEGMENTS=()
   SEGMENT_SEPARATORS=()
 
