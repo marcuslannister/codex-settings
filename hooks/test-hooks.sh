@@ -418,6 +418,91 @@ w redirect_decision deny  Bash '{"command":"git.exe status"}'
 w redirect_decision deny  Bash '{"command":"pwsh -Command '"'git status'"'"}'
 w redirect_decision allow Bash '{"command":"pwsh -Command '"'git commit -m x'"'"}'
 
+# A heredoc body is data: a line that starts with `set`, `env`, `git reset --hard`, or
+# `grep` is not a command. This holds for every way to write the opener, in every hook
+# that parses with read_command.
+hd_body=$'set\nenv\nexport\nprintenv\ndeclare -x\ngit reset --hard\ngit status\ngh pr view 1\ngrep -r x .'
+for hd in "<<'EOF'" '<<"EOF"' '<<\EOF' '<<EOF' '<< EOF'; do
+  hd_cmd="cat >> /tmp/x.md $hd"$'\n'"$hd_body"$'\nEOF'
+  for h in block-env-dump.sh block-git-destructive.sh gh-json.sh; do
+    check $h allow "$hd_cmd"
+  done
+  decision allow "$hd_cmd"
+  check block-env-dump.sh deny "$hd_cmd"$'\nenv'          # a command after the end word is still read
+  check block-git-destructive.sh deny "$hd_cmd"$'\ngit reset --hard'
+done
+check block-env-dump.sh allow $'cat > /tmp/i.sh <<-EOF\n\tset\n\tenv\n\tEOF'
+check block-env-dump.sh deny $'cat > /tmp/i.sh <<-EOF\n\tset\n\tEOF\nenv'
+# Windows: a CRLF command ends the heredoc at `EOF\r`.
+check block-git-destructive.sh allow $'cat > /tmp/x <<EOF\r\ngit reset --hard\r\nEOF\r\n'
+check block-git-destructive.sh deny $'cat > /tmp/x <<EOF\r\nx\r\nEOF\r\ngit reset --hard\r\n'
+# Two heredocs on one line: both bodies are data.
+check block-env-dump.sh allow $'cat <<\'A\' <<\'B\'\nset\nA\nenv\nB'
+check block-env-dump.sh deny $'cat <<\'A\' <<\'B\'\nset\nA\nenv\nB\nenv'
+# The command line that opens the heredoc is still checked.
+check block-git-destructive.sh deny $'git reset --hard <<\'EOF\'\nx\nEOF'
+check block-env-dump.sh deny $'env -0 && cat <<\'EOF\'\nx\nEOF'
+check block-env-dump.sh deny $'cat <<EOF $GITHUB_TOKEN\nx\nEOF'
+# An unquoted body expands: `$(...)`, a backtick, and `$VAR` still run or print.
+check block-git-destructive.sh deny $'cat <<EOF\n$(git reset --hard)\nEOF'
+check block-git-destructive.sh deny $'cat <<EOF\n`git reset --hard`\nEOF'
+check block-env-dump.sh deny $'cat <<EOF\necho $GITHUB_TOKEN\nEOF'
+check block-env-dump.sh allow $'cat <<\'EOF\'\necho $GITHUB_TOKEN\nEOF'
+# A shell reads the body of its heredoc as commands, so those lines stay checked.
+check block-git-destructive.sh deny $'ssh h sh -s <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'ssh h <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'cat <<\'EOF\' | bash\ngit reset --hard\nEOF'
+check block-env-dump.sh deny $'bash <<EOF\nenv\nEOF'
+# `<<` that is not a heredoc opener hides nothing: here-string, quoted text, arithmetic.
+check block-env-dump.sh allow 'cat <<< set'
+check block-git-destructive.sh deny $'cat <<< x\ngit reset --hard'
+check block-git-destructive.sh deny $'git commit -m "mention <<EOF here"\ngit reset --hard'
+check block-git-destructive.sh deny $'git commit -m "title\n\nmention <<EOF here"\ngit reset --hard'
+check block-git-destructive.sh deny $'echo $((1<<3))\ngit reset --hard'
+check block-git-destructive.sh deny $'# use <<EOF here\ngit reset --hard'
+check block-git-destructive.sh deny $'echo hi # <<EOF\ngit reset --hard'
+# `\` and a newline join the lines first: the shell word may sit on a continuation line.
+check block-git-destructive.sh deny $'ssh -o X=1 \\\n  h <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'cat <<\'EOF\' \\\n  | ssh h bash -s\ngit reset --hard\nEOF'
+check block-env-dump.sh allow $'cat >> notes \\\n  <<\'EOF\'\nset\nenv\nEOF'
+check block-env-dump.sh deny $'cat >> notes \\\n  <<\'EOF\'\nset\nEOF\nenv'
+check block-git-destructive.sh deny $'git push \\\n  --force <<\'EOF\'\nx\nEOF'
+# Write, then run: a body that a later `bash`, `sh`, `.`, `source`, or `./file` runs is a script.
+check block-git-destructive.sh deny $'cat > /tmp/fix.sh <<\'EOF\'\ngit reset --hard origin/main\nEOF\nbash /tmp/fix.sh'
+check block-git-destructive.sh deny $'cat > fix.sh <<\'EOF\' && chmod +x fix.sh && ./fix.sh\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'cat > /tmp/fix.sh <<\'EOF\'\ngit reset --hard\nEOF\n/tmp/fix.sh'
+check block-env-dump.sh deny $'cat > x <<\'EOF\'\nenv\nEOF\nsh x'
+check block-env-dump.sh deny $'cat > x <<\'EOF\'\nenv\nEOF\n. ./x'
+check block-env-dump.sh deny $'cat > x <<\'EOF\'\nenv\nEOF\nsource x'
+# A word in the body, a `.` argument, or a file name that nothing runs is not a run.
+check block-env-dump.sh allow $'cat >> notes <<\'EOF\'\nrun bash hooks/test-hooks.sh\nset\nenv\nEOF'
+check block-env-dump.sh allow $'git add . && cat >> notes <<\'EOF\'\nset\nenv\nEOF'
+check block-env-dump.sh allow $'cat > ./fix.sh <<\'EOF\'\nset\nenv\nEOF'
+check block-env-dump.sh allow $'cd /tmp && git commit -F - <<\'EOF\'\nenv\nEOF'
+# More shells read their stdin: su, sudo -i, sudo -s, a dot command, and any letter case.
+check block-git-destructive.sh deny $'su root <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'sudo -i <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'sudo -s <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'. /dev/stdin <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'SSH h <<\'EOF\'\ngit reset --hard\nEOF'
+check block-env-dump.sh deny $'BASH <<EOF\nenv\nEOF'
+check block-env-dump.sh allow $'sudo -u root tee -a f <<\'EOF\'\nset\nenv\nEOF'
+# These already held: a shell after sudo or env, `bash -s`, and a pipe into `sudo bash`.
+check block-git-destructive.sh deny $'sudo bash <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'env bash <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'bash -s <<\'EOF\'\ngit reset --hard\nEOF'
+check block-git-destructive.sh deny $'cat <<\'EOF\' | sudo bash\ngit reset --hard\nEOF'
+# An end word with quotes inside is the word without them: `E"O"F` ends at `EOF`.
+check block-git-destructive.sh deny $'cat <<E"O"F\nx\nEOF\ngit reset --hard'
+check block-git-destructive.sh deny $'cat <<\'E\'OF\nx\nEOF\ngit reset --hard'
+check block-env-dump.sh allow $'cat <<E"O"F\nset\nenv\nEOF'
+check block-env-dump.sh allow $'cat <<E"O"F\necho $GITHUB_TOKEN\nEOF'
+# Windows: Git Bash runs `BASH.EXE`, in any case.
+w check block-git-destructive.sh deny $'BASH.EXE -s <<\'EOF\'\ngit reset --hard\nEOF'
+# The same on Windows, where Git Bash runs the hook.
+w check block-env-dump.sh allow $'cat >> /tmp/x.md <<\'EOF\'\nset\nenv\nEOF'
+w check block-git-destructive.sh deny $'cat >> /tmp/x.md <<\'EOF\'\nset\nEOF\ngit reset --hard'
+
 # context-handoff.sh reads the fill from a rollout. A fake rollout has a running
 # total far above the fill and a trailing token_count with no info, so a wrong
 # field or a null event shows up. TMPDIR is isolated, so the once-per-session
